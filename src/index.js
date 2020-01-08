@@ -1,6 +1,7 @@
 import "./styles/index.scss";
 const THREE = require('three');
 
+// Tetris logic
 let arena = [
   [0, 0, 0, 1, 1, 0, 0, 0],
   [0, 0, 0, 1, 1, 0, 0, 0],
@@ -12,10 +13,48 @@ let arena = [
   [0, 0, 0, 0, 0, 0, 0, 0],
   [0, 0, 0, 0, 0, 0, 0, 0],
   [0, 0, 0, 0, 0, 0, 0, 0],
-  [0, 0, 0, 0, 0, 0, 0, 0],
-  [0, 0, 0, 0, 0, 0, 0, 0]
+  [0, 0, 11, 11, 0, 0, 0, 0],
+  [0, 0, 11, 11, 0, 0, 0, 0]
 ];
 
+function movePieceDown() {
+  let canMove = true;
+  // check collision
+  for (let y = arena.length - 1; y >= 0; y--) {
+    for (let x = 0; x < arena[y].length; x++) {
+      if (arena[y][x] > 0 && arena[y][x] < 10) {
+        if (y + 1 === arena.length || arena[y + 1][x] > 10) {
+          canMove = false;
+          // when block collide with scene, solidify it
+          solidify();
+        }
+      }
+    }
+  }
+  // if no collision, swap the blocks with empty space one space below
+  if (canMove) {
+    for (let y = arena.length - 1; y >= 0; y--) {
+      for (let x = 0; x < arena[y].length; x++) {
+        if (arena[y][x] > 0 && arena[y][x] < 10) {
+          arena[y + 1][x] = arena[y][x];
+          arena[y][x] = 0;
+        }
+      }
+    }
+  }
+}
+
+function solidify() {
+  for (let y = arena.length - 1; y >= 0; y--) {
+    for (let x = 0; x < arena[y].length; x++) {
+      if (arena[y][x] > 0 && arena[y][x] < 10) {
+        arena[y][x] = arena[y][x] + 10;
+      }
+    }
+  }
+}
+
+// three.js stuff below
 let Tetris = {};
 let vector = new THREE.Vector3(0,0,0);
 
@@ -62,77 +101,63 @@ let boundingBoxConfig = {
 Tetris.boundingBoxConfig = boundingBoxConfig;
 Tetris.blockSize = boundingBoxConfig.width / boundingBoxConfig.splitX;
 
-Tetris.spotLight = new THREE.SpotLight(0xcccccc, 0.6);
-Tetris.spotLight.position.set(0, 1, 0);
-Tetris.scene.add(Tetris.spotLight);
-Tetris.scene.add(Tetris.spotLight.target); // add target to the scene
+Tetris.pointLight = new THREE.PointLight(0xffffff, 3);
+Tetris.pointLight.position.set(-100, 100, 100);
+Tetris.scene.add(Tetris.pointLight);
 
-let boundingBox = new THREE.Mesh(
-  new THREE.CubeGeometry(
-    boundingBoxConfig.width, boundingBoxConfig.height, boundingBoxConfig.depth,
-    boundingBoxConfig.splitX, boundingBoxConfig.splitY, boundingBoxConfig.splitZ),
-  new THREE.MeshBasicMaterial({ color: 0xffaa00, wireframe: true })
+let cubeGeo = new THREE.CubeGeometry(
+  boundingBoxConfig.width, boundingBoxConfig.height, boundingBoxConfig.depth,
+  boundingBoxConfig.splitX, boundingBoxConfig.splitY, boundingBoxConfig.splitZ);
+
+let boundingBox = new THREE.LineSegments(
+  new THREE.EdgesGeometry(cubeGeo),
+  new THREE.LineBasicMaterial({ color: 0x000000, linewidth: 2 })
 );
 Tetris.scene.add(boundingBox);
 
-function moveShapesDown() {
-  let canMove = true;
-  // check collision
-  for (let y = arena.length - 1; y >= 0; y--) {
-    for (let x = 0; x < arena[y].length; x++) {
-      if (arena[y][x] > 0 && arena[y][x] < 10) {
-        if (y + 1 === arena.length || arena[y + 1][x] > 10) {
-          canMove = false;
-        }
-      }
-    }
+// function to convert arena blocks to 3d objects
+Tetris.addStaticBlock = function (x, y, val) {
+  let color;
+  
+  switch (val) {
+    case 1:
+      color = 0xff00ff
+      break;
+    case 11:
+      color = 0x0000ff
+      break;
+    default:
+      color = 0x0000ff
+      break;
   }
-  // if no collision, swap the blocks with empty space one space below
-  if (canMove) {
-    for (let y = arena.length - 1; y >= 0; y--) {
-      for (let x = 0; x < arena[y].length; x++) {
-        if (arena[y][x] > 0 && arena[y][x] < 10) {
-          arena[y + 1][x] = arena[y][x];
-          arena[y][x] = 0;
-        }
-      }
-    }
-  }
-}
 
-Tetris.staticBlocks = [];
-Tetris.addStaticBlock = function (x, y) {
-  if (Tetris.staticBlocks[x] === undefined) Tetris.staticBlocks[x] = [];
-
-  var mesh = new THREE.Mesh(new THREE.CubeGeometry(Tetris.blockSize, Tetris.blockSize, Tetris.blockSize), 
-    new THREE.MeshPhongMaterial({ color: 0x0000ff, wireframe:false }) 
+  const mesh = new THREE.Mesh(new THREE.CubeGeometry(Tetris.blockSize, Tetris.blockSize, Tetris.blockSize), 
+    new THREE.MeshPhongMaterial({ color, wireframe:false }) 
   );
-
 
   mesh.position.x = (x - Tetris.boundingBoxConfig.splitX/2) * Tetris.blockSize + Tetris.blockSize / 2;
   mesh.position.y = (Tetris.boundingBoxConfig.splitY / 2 - y) * Tetris.blockSize - Tetris.blockSize / 2;
   mesh.position.z = ( -Tetris.boundingBoxConfig.splitZ / 2) * Tetris.blockSize + Tetris.blockSize / 2;
-  mesh.overdraw = true;
+  // mesh.overdraw = true;
 
   Tetris.scene.add(mesh);
-  Tetris.staticBlocks[x][y] = mesh;
 };
 
 function convertArenaToBlocks () {
   for (const [y, row] of arena.entries()) {
     for (const [x, val] of row.entries()) {
-      if (val) Tetris.addStaticBlock(x, y);
+      if (val) Tetris.addStaticBlock(x, y, val);
     }
   }
 }
 
-function removeMeshes() {
+function clearScene() {
   while (Tetris.scene.children.length > 0)  {
     Tetris.scene.remove(Tetris.scene.children[0]);
   }
 }
 
-console.log(Tetris.scene.children)
+// render and animation below
 
 let lastTime = 0;
 let timer = 0;
@@ -147,19 +172,19 @@ function gameLoop(time = 0) {
   }
 
   Tetris.camera.lookAt(vector);
-  Tetris.renderer.render(Tetris.scene, Tetris.camera);
-
+  
   timer += frameTime;
-  console.log(timer)
   if (timer > 1000) {
     timer = 0;
-    removeMeshes();
+    clearScene();
     convertArenaToBlocks();
     Tetris.scene.add(Tetris.camera);
     Tetris.scene.add(boundingBox);
-    moveShapesDown();
+    Tetris.scene.add(Tetris.pointLight);
+    movePieceDown();
   }
-
+  
+  Tetris.renderer.render(Tetris.scene, Tetris.camera);
   requestAnimationFrame(gameLoop);
 }
 
