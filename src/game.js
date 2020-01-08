@@ -1,3 +1,5 @@
+
+
 let arena = [
   [0, 0, 0, 1, 1, 0, 0, 0],
   [0, 0, 0, 1, 1, 0, 0, 0],
@@ -13,9 +15,11 @@ let arena = [
   [0, 0, 0, 0, 0, 0, 0, 0]
 ];
 
+let Tetris = {};
+
 function drawWorld() {
   for (var y = 0; y < arena.length; y++) {
-    console.log(arena[y]);
+    // console.log(arena[y]);
   }
 }
 

@@ -1,3 +1,11 @@
+class Piece {
+    constructor(tetromino, color) {
+        this.tetromino = tetromino;
+        this.color = color;
+    }
+}
+
+
 const t1 = [
     [0, 0, 0],
     [1, 1, 1],
@@ -6,7 +14,7 @@ const t1 = [
 
 const t2 = [
     [0, 1, 0],
-    [0, 1, 1],
+    [1, 1, 0],
     [0, 1, 0]
 ]
 
@@ -17,8 +25,8 @@ const t3 = [
 ]
 
 const t4 = [
-    [0, 0, 0],
-    [1, 1, 1],
+    [0, 1, 0],
+    [0, 1, 1],
     [0, 1, 0]
 ]
 
