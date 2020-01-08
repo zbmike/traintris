@@ -3,8 +3,8 @@ const THREE = require('three');
 
 // Tetris logic
 let arena = [
-  [0, 0, 0, 1, 1, 0, 0, 0],
-  [0, 0, 0, 1, 1, 0, 0, 0],
+  [0, 0, 0, 1, 1, 1, 0, 0],
+  [0, 0, 0, 0, 1, 0, 0, 0],
   [0, 0, 0, 0, 0, 0, 0, 0],
   [0, 0, 0, 0, 0, 0, 0, 0],
   [0, 0, 0, 0, 0, 0, 0, 0],
@@ -42,6 +42,58 @@ function movePieceDown() {
       }
     }
   }
+  resetScene();
+  Tetris.renderer.render(Tetris.scene, Tetris.camera);
+}
+
+// similar to move down but will not cause solidify
+function movePieceLeft() {
+  canMove = true;
+  for (let y = arena.length - 1; y >= 0; y--) {
+    for (let x = 0; x < arena[y].length; x++) {
+      if (arena[y][x] > 0 && arena[y][x] < 10) {
+        if (x === 0 || arena[y][x - 1] > 10) {
+          canMove = false;
+        }
+      }
+    }
+  }
+  if (canMove) {
+    for (let y = arena.length - 1; y >= 0; y--) {
+      for (let x = 0; x < arena[y].length; x++) {
+        if (arena[y][x] > 0 && arena[y][x] < 10) {
+          arena[y][x - 1] = arena[y][x];
+          arena[y][x] = 0;
+        }
+      }
+    }
+  }
+  resetScene();
+  Tetris.renderer.render(Tetris.scene, Tetris.camera);
+}
+function movePieceRight() {
+  canMove = true;
+  for (let y = arena.length - 1; y >= 0; y--) {
+    for (let x = 0; x < arena[y].length; x++) {
+      if (arena[y][x] > 0 && arena[y][x] < 10) {
+        if (x === 7 || arena[y][x + 1] > 10) {
+          canMove = false;
+        }
+      }
+    }
+  }
+  if (canMove) {
+    for (let y = arena.length - 1; y >= 0; y--) {
+      for (let x = arena[y].length; x >= 0; x--) {
+        if (arena[y][x] > 0 && arena[y][x] < 10) {
+          arena[y][x + 1] = arena[y][x];
+          arena[y][x] = 0;
+        }
+      }
+    }
+  }
+  resetScene();
+  Tetris.renderer.render(Tetris.scene, Tetris.camera);
 }
 
 function solidify() {
@@ -51,6 +103,17 @@ function solidify() {
         arena[y][x] = arena[y][x] + 10;
       }
     }
+  }
+}
+
+document.onkeydown = function (e) {
+  // console.log(e.keyCode)
+  if (e.keyCode === 65) {
+    movePieceLeft();
+  } else if (e.keyCode === 68) {
+    movePieceRight();
+  } else if (e.keyCode === 83) {
+    movePieceDown();
   }
 }
 
@@ -70,7 +133,7 @@ Tetris.init = function () {
   const FAR = 10000;
 
   // create renderer, camera and a scene
-  Tetris.renderer = new THREE.WebGLRenderer();
+  Tetris.renderer = new THREE.WebGLRenderer({ antialias: true });
   Tetris.camera = new THREE.PerspectiveCamera(VIEW_ANGLE, ASPECT,
                                               NEAR, FAR);
   Tetris.scene = new THREE.Scene();
@@ -162,6 +225,14 @@ function clearScene() {
 let lastTime = 0;
 let timer = 0;
 
+function resetScene() {
+  clearScene();
+  convertArenaToBlocks();
+  Tetris.scene.add(Tetris.camera);
+  Tetris.scene.add(boundingBox);
+  Tetris.scene.add(Tetris.pointLight);
+}
+
 function gameLoop(time = 0) {
   const frameTime = time - lastTime;
   lastTime = time;
@@ -176,11 +247,7 @@ function gameLoop(time = 0) {
   timer += frameTime;
   if (timer > 1000) {
     timer = 0;
-    clearScene();
-    convertArenaToBlocks();
-    Tetris.scene.add(Tetris.camera);
-    Tetris.scene.add(boundingBox);
-    Tetris.scene.add(Tetris.pointLight);
+    resetScene()
     movePieceDown();
   }
   
