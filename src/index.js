@@ -20,31 +20,27 @@ let Tetris = {};
 let vector = new THREE.Vector3(0,0,0);
 
 Tetris.init = function () {
-  // set the scene size
-  const WIDTH = 480,
-    HEIGHT = 720;
+  // scene dimension
+  const WIDTH = 480;
+  const HEIGHT = 720;
 
-  // set some camera attributes
-  const VIEW_ANGLE = 90,
-    ASPECT = WIDTH / HEIGHT,
-    NEAR = 0.1,
-    FAR = 10000;
+  // camera attributes
+  const VIEW_ANGLE = 90;
+  const ASPECT = WIDTH / HEIGHT;
+  const NEAR = 0.1;
+  const FAR = 10000;
 
-  // create a WebGL renderer, camera
-  // and a scene
+  // create renderer, camera and a scene
   Tetris.renderer = new THREE.WebGLRenderer();
-  Tetris.camera = new THREE.PerspectiveCamera(VIEW_ANGLE,
-    ASPECT,
-    NEAR,
-    FAR);
+  Tetris.camera = new THREE.PerspectiveCamera(VIEW_ANGLE, ASPECT,
+                                              NEAR, FAR);
   Tetris.scene = new THREE.Scene();
   Tetris.scene.background = new THREE.Color(0xffffff);
 
-  // the camera starts at 0,0,0 so pull it back
+  // reposition the camera
   Tetris.camera.position.z = 550;
   Tetris.scene.add(Tetris.camera);
 
-  // start the renderer
   Tetris.renderer.setSize(WIDTH, HEIGHT);
 
   // attach the render-supplied DOM element
@@ -53,6 +49,7 @@ Tetris.init = function () {
 
 Tetris.init();
 
+// make a bounding box to align the tetrominoes
 let boundingBoxConfig = {
   width: 480,
   height: 720,
@@ -76,7 +73,6 @@ let boundingBox = new THREE.Mesh(
     boundingBoxConfig.splitX, boundingBoxConfig.splitY, boundingBoxConfig.splitZ),
   new THREE.MeshBasicMaterial({ color: 0xffaa00, wireframe: true })
 );
-boundingBox.name = 'bBox';
 Tetris.scene.add(boundingBox);
 
 function moveShapesDown() {
@@ -91,6 +87,7 @@ function moveShapesDown() {
       }
     }
   }
+  // if no collision, swap the blocks with empty space one space below
   if (canMove) {
     for (let y = arena.length - 1; y >= 0; y--) {
       for (let x = 0; x < arena[y].length; x++) {
@@ -108,8 +105,9 @@ Tetris.addStaticBlock = function (x, y) {
   if (Tetris.staticBlocks[x] === undefined) Tetris.staticBlocks[x] = [];
 
   var mesh = new THREE.Mesh(new THREE.CubeGeometry(Tetris.blockSize, Tetris.blockSize, Tetris.blockSize), 
-    new THREE.MeshBasicMaterial({ color: 0x0000ff, wireframe:false })
+    new THREE.MeshPhongMaterial({ color: 0x0000ff, wireframe:false }) 
   );
+
 
   mesh.position.x = (x - Tetris.boundingBoxConfig.splitX/2) * Tetris.blockSize + Tetris.blockSize / 2;
   mesh.position.y = (Tetris.boundingBoxConfig.splitY / 2 - y) * Tetris.blockSize - Tetris.blockSize / 2;
