@@ -14,6 +14,10 @@ let forward = true;
 let piece, next, score = 0, level = 1;
 let speed = 1000; // the smaller the faster
 
+const bgm = document.getElementById('bgm');
+const hardDropSFX = document.getElementById('harddrop');
+const scoreRowSFX = document.getElementById('clearrow');
+
 function clearActiveBlock() {
   for (let y = 0; y < arena.length; y++) {
     for (let x = 0; x < arena[0].length; x++) {
@@ -199,6 +203,7 @@ function scoreRow() {
       break;
   }
   if (lines) {
+    scoreRowSFX.play();
     document.getElementById('score').innerText = score;
     level = Math.floor(score/800 + 1);
     document.getElementById('level').innerText = level;
@@ -222,7 +227,7 @@ function hardDrop() {
   clearActiveBlock();
   piece.y = nextPiece.y - 1;
   addPieceToArena(piece);
-
+  hardDropSFX.play();
   resetScene();
   Tetris.renderer.render(Tetris.scene, Tetris.camera);
 }
@@ -258,8 +263,14 @@ document.onkeydown = function (e) {
 }
 
 function switchModal() {
-  if (pause) document.getElementsByClassName('modal')[0].classList.add('show');
-  else document.getElementsByClassName('modal')[0].classList.remove('show');
+  if (pause) {
+    bgm.pause();
+    document.getElementsByClassName('modal')[0].classList.add('show');
+  }
+  else {
+    bgm.play();
+    document.getElementsByClassName('modal')[0].classList.remove('show');
+  }
 }
 
 function setupPause() {
@@ -282,18 +293,21 @@ function clickStart(e) {
   e.preventDefault();
   document.getElementsByClassName('modal')[0].classList.remove('show');
   pause = false;
+  bgm.play();
   switchModal();
   setupPause();
 }
 
 function clickUnpause(e) {
   e.preventDefault();
+  pause = false;
   document.getElementsByClassName('modal')[0].classList.remove('show');
 }
 
 function clickRestart(e) {
   e.preventDefault();
   arena = new Array(ARENA_HEIGHT).fill().map(() => new Array(ARENA_WIDTH));
+  score = 0, level = 1, speed = 1000;
   resetScene();
   initGame();
   document.getElementsByClassName('modal')[0].classList.remove('show');
