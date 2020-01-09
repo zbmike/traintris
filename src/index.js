@@ -4,6 +4,7 @@ const tetrominoes = require('./tetromino');
 
 // Tetris logic
 let gameover = false;
+let pause = false;
 
 let arena = [
   [0, 0, 0, 0, 0, 0, 0, 0],
@@ -20,7 +21,7 @@ let arena = [
   [0, 0, 0, 0, 0, 0, 0, 0]
 ];
 
-let piece;
+let piece, next, score = 0;
 
 function clearActiveBlock() {
   for (let y = 0; y < arena.length; y++) {
@@ -152,8 +153,8 @@ function solidify() {
     }
   }
   scoreRow();
-  generateNewPiece();
-  console.log(arena);
+  piece = next;
+  next = generateNewPiece();
   if (predictCollision(piece)) {
     gameover = true;
     alert('Game Over!');
@@ -161,6 +162,7 @@ function solidify() {
 }
 
 function scoreRow() {
+  let lines = 0;
   for (let y = 0; y < arena.length; y++) {
     let fullLine = true;
     for (let x = 0; x < arena[y].length; x++) {
@@ -172,15 +174,48 @@ function scoreRow() {
       arena.splice(y, 1);
       arena.splice(0, 0, new Array(8).fill(0))
       y--;
+      lines++;
     }
+  }
+  switch (lines) {
+    case 1:
+      score += 40;
+      break;
+    case 2:
+      score += 100;
+      break;
+    case 3:
+      score += 300;
+      break;
+    case 4:
+      score += 1200;
+      break;
   }
 }
 
 function generateNewPiece() {
   const pieces = ['t', 'z', 's', 'o', 'i', 'j', 'l'] 
   const type = pieces[Math.floor(Math.random()*pieces.length)];
-  piece = {
+  return {
     type, rotation: 0, x:3, y:-1, tetromino:tetrominoes[type][0]
+  }
+}
+
+function hardDrop() {
+  let nextPiece = Object.assign({}, piece);
+  nextPiece.y++;
+  while (!predictCollision(nextPiece)) {
+    nextPiece.y++;
+  }
+  clearActiveBlock();
+  piece.y = nextPiece.y - 1;
+  addPieceToArena(piece);
+  solidify();
+
+  resetScene();
+  Tetris.renderer.render(Tetris.scene, Tetris.camera);
+  while (!predictCollision(piece)){
+    piece.y++;
   }
 }
 
@@ -195,7 +230,12 @@ document.onkeydown = function (e) {
     timer = 0;
   } else if (e.keyCode === 32) {
     rotatePiece();
-  }
+  } else if (e.keyCode === 87) {
+    hardDrop();
+  } else if (e.keyCode === 81) {
+    pause = !pause;
+    if (!pause) gameLoop();
+  } 
 }
 
 // three.js stuff below
@@ -335,10 +375,11 @@ function gameLoop(time = 0) {
   }
 
   Tetris.renderer.render(Tetris.scene, Tetris.camera);
-  if (!gameover) requestAnimationFrame(gameLoop);
+  if (!gameover && !pause) requestAnimationFrame(gameLoop);
 }
 
-generateNewPiece();
+piece = generateNewPiece();
+next = generateNewPiece();
 piece.y++;
 addPieceToArena(piece);
 convertArenaToBlocks();
