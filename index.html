@@ -9,25 +9,30 @@
   </head>
   
   <body>
-    <div class='status-bar'>
-      <div class='title'>
-        <h1>TrainTris</h1>
-      </div>
-      <div class='next-container'>
-        <h2>Next Piece</h2>
-        <div class='next-canvas-container'>
-          <canvas id='nextTetromino'></canvas>
+    <main id='main'>
+      <div class='status-bar'>
+        <div class='title'>
+          <h1>TrainTris</h1>
+        </div>
+        <div class='next-container'>
+          <h2>Next Piece</h2>
+          <div class='next-canvas-container'>
+            <canvas id='nextTetromino'></canvas>
+          </div>
+        </div>
+        <div class='container'>
+          <h2>Score</h2>
+          <h2 id='score' class='holder'>0</h2>
+        </div>
+        <div class='container'>
+          <h2>Level</h2>
+          <h2 id='level' class='holder'>1</h2>
+        </div>
+        <div class='container'>
+          <p>Press Q to start</p>
         </div>
       </div>
-      <div class='container'>
-        <h2>Score</h2>
-        <h2 id='score' class='holder'>0</h2>
-      </div>
-      <div class='container'>
-        <h2>Level</h2>
-        <h2 id='level' class='holder'>1</h2>
-      </div>
-    </div>
+    </main>
     <script src="./dist/main.js"></script>
   </body>
 </html>

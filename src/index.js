@@ -21,8 +21,11 @@ let arena = [
   [0, 0, 0, 0, 0, 0, 0, 0]
 ];
 
+arena = new Array(ARENA_HEIGHT).fill().map(()=> new Array(ARENA_WIDTH));
+console.log(arena);
+
 let gameover = false;
-let pause = false;
+let pause = true;
 let forward = true;
 let piece, next, score = 0, level = 1;
 let speed = 1000; // the smaller the faster
@@ -241,24 +244,27 @@ function hardDrop() {
 
 document.onkeydown = function (e) {
   // console.log(e.keyCode)
-  if (e.keyCode === 65) {
-    e.preventDefault();
-    movePieceLeft();
-  } else if (e.keyCode === 68) {
-    e.preventDefault();
-    movePieceRight();
-  } else if (e.keyCode === 83) {
-    e.preventDefault();
-    timer = 0;
-    movePieceDown();
-  } else if (e.keyCode === 32) {
-    e.preventDefault();
-    rotatePiece();
-  } else if (e.keyCode === 87) {
-    e.preventDefault();
-    timer = 500;
-    hardDrop();
-  } else if (e.keyCode === 81) {
+  if (!gameover && !pause){
+    if (e.keyCode === 65) {
+      e.preventDefault();
+      movePieceLeft();
+    } else if (e.keyCode === 68) {
+      e.preventDefault();
+      movePieceRight();
+    } else if (e.keyCode === 83) {
+      e.preventDefault();
+      timer = 0;
+      movePieceDown();
+    } else if (e.keyCode === 32) {
+      e.preventDefault();
+      rotatePiece();
+    } else if (e.keyCode === 87) {
+      e.preventDefault();
+      timer = 500;
+      hardDrop();
+    }
+  }
+  if (e.keyCode === 81) {
     e.preventDefault();
     pause = !pause;
     if (!pause) gameLoop();
@@ -293,7 +299,8 @@ Tetris.init = function () {
   Tetris.renderer.setSize(WIDTH, HEIGHT);
 
   // attach the render-supplied DOM element
-  document.body.appendChild(Tetris.renderer.domElement);
+  document.getElementById('main')
+  .appendChild(Tetris.renderer.domElement);
 }
 
 Tetris.init();
@@ -311,7 +318,7 @@ let boundingBoxConfig = {
 Tetris.boundingBoxConfig = boundingBoxConfig;
 Tetris.blockSize = boundingBoxConfig.width / boundingBoxConfig.splitX;
 
-Tetris.pointLight = new THREE.PointLight(0xffffff, 1);
+Tetris.pointLight = new THREE.PointLight(0xffffff, 1.5);
 Tetris.pointLight.position.set(-100, 100, 500);
 Tetris.scene.add(Tetris.pointLight);
 
@@ -366,7 +373,7 @@ Tetris.addStaticBlock = function (x, y, val) {
 
   let outline = new THREE.LineSegments(
     new THREE.EdgesGeometry(blockGeo),
-    new THREE.LineBasicMaterial({ color: 0xffffff, linewidth: 5 })
+    new THREE.LineBasicMaterial({ color: 0x000000, linewidth: 5 })
   );
 
   const mesh = new THREE.Mesh(new THREE.CubeGeometry(Tetris.blockSize, Tetris.blockSize, Tetris.blockSize),
@@ -409,12 +416,12 @@ function drawNextTetro() {
                        j: "#FF971C", l:"#FF971C", i:"#FF3213", o:"#1073C4"};
   canvas.width = width * matrix.length;
   canvas.height = width * matrix.length;
-  ctx.fillStyle = 'white';
+  ctx.fillStyle = 'black';
   ctx.fillRect(0, 0, width, width);
   matrix.forEach((row, y) => {
     row.forEach((value, x) => {
       if (value) {
-        ctx.strokeStyle = "#FFFFFF";
+        ctx.strokeStyle = "#000000";
         ctx.lineWidth = 4;
         ctx.strokeRect(x * width,
           y * width,
@@ -441,6 +448,8 @@ function resetScene() {
   Tetris.scene.add(Tetris.pointLight);
 }
 
+let lightPos = 0;
+
 function gameLoop(time = 0) {
   const frameTime = time - lastTime;
   lastTime = time;
@@ -450,10 +459,15 @@ function gameLoop(time = 0) {
     Tetris.camera.position.x += 1;
   }
 
-  if (forward && Tetris.pointLight.position.x < 500) Tetris.pointLight.position.x+=5;
-  else if (forward && Tetris.pointLight.position.x === 500) forward = false;
-  else if (!forward && Tetris.pointLight.position.x > -500) Tetris.pointLight.position.x-=5;
-  else if (!forward && Tetris.pointLight.position.x === -500) forward = true;
+  if (forward && Tetris.pointLight.position.x < 500) {
+    lightPos++;
+    Tetris.pointLight.position.x = ((lightPos * lightPos) -500000 )/ 500000 * 500;
+  } else if (forward && Tetris.pointLight.position.x >= 500) forward = false;
+  else if (!forward && Tetris.pointLight.position.x > -500) {
+    lightPos--;
+    Tetris.pointLight.position.x = ((lightPos * lightPos) - 500000) / 500000 * 500;
+  } else if (!forward && Tetris.pointLight.position.x <= -500) forward = true;
+  console.log(Tetris.pointLight.position.x)
 
   Tetris.camera.lookAt(vector);
 
