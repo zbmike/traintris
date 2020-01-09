@@ -3,26 +3,10 @@ const THREE = require('three');
 const tetrominoes = require('./tetromino');
 
 // Tetris logic
-const ARENA_WIDTH = 8;
-const ARENA_HEIGHT = 12;
+const ARENA_WIDTH = 12;
+const ARENA_HEIGHT = 20;
 
-let arena = [
-  [0, 0, 0, 0, 0, 0, 0, 0],
-  [0, 0, 0, 0, 0, 0, 0, 0],
-  [0, 0, 0, 0, 0, 0, 0, 0],
-  [0, 0, 0, 0, 0, 0, 0, 0],
-  [0, 0, 0, 0, 0, 0, 0, 0],
-  [0, 0, 0, 0, 0, 0, 0, 0],
-  [0, 0, 0, 0, 0, 0, 0, 0],
-  [0, 0, 0, 0, 0, 0, 0, 0],
-  [0, 0, 0, 0, 0, 0, 0, 0],
-  [0, 0, 0, 0, 0, 0, 0, 0],
-  [0, 0, 0, 0, 0, 0, 0, 0],
-  [0, 0, 0, 0, 0, 0, 0, 0]
-];
-
-arena = new Array(ARENA_HEIGHT).fill().map(()=> new Array(ARENA_WIDTH));
-console.log(arena);
+let arena;
 
 let gameover = false;
 let pause = true;
@@ -177,7 +161,8 @@ function solidify() {
   drawNextTetro();
   if (predictCollision(piece)) {
     gameover = true;
-    alert('Game Over!');
+    setupRestart();
+    document.getElementsByClassName('modal')[0].classList.add('show');
   } else {
     addPieceToArena(piece);
   }
@@ -194,7 +179,7 @@ function scoreRow() {
     }
     if (fullLine) {
       arena.splice(y, 1);
-      arena.splice(0, 0, new Array(8).fill(0))
+      arena.splice(0, 0, new Array(ARENA_WIDTH).fill(0))
       y--;
       lines++;
     }
@@ -225,7 +210,7 @@ function generateNewPiece() {
   const pieces = ['t', 'z', 's', 'o', 'i', 'j', 'l'] 
   const type = pieces[Math.floor(Math.random()*pieces.length)];
   return {
-    type, rotation: 0, x:3, y:0, tetromino:tetrominoes[type][0]
+    type, rotation: 0, x:Math.floor(ARENA_WIDTH/2-1), y:0, tetromino:tetrominoes[type][0]
   }
 }
 
@@ -260,15 +245,60 @@ document.onkeydown = function (e) {
       rotatePiece();
     } else if (e.keyCode === 87) {
       e.preventDefault();
-      timer = 500;
+      timer = 200;
       hardDrop();
     }
   }
   if (e.keyCode === 81) {
     e.preventDefault();
     pause = !pause;
-    if (!pause) gameLoop();
+    switchModal();
+    setupPause();
   } 
+}
+
+function switchModal() {
+  if (pause) document.getElementsByClassName('modal')[0].classList.add('show');
+  else document.getElementsByClassName('modal')[0].classList.remove('show');
+}
+
+function setupPause() {
+  document.getElementById('message').innerText = 'Paused';
+  const button = document.getElementById('start');
+  button.innerText = 'Unpause';
+  button.onclick = clickUnpause;
+  document.getElementById('instruction').innerText = 'Or press Q to unpause';
+}
+
+function setupRestart() {
+  document.getElementById('message').innerText = 'Game Over';
+  const button = document.getElementById('start');
+  button.innerText = 'Restart';
+  button.onclick = clickRestart;
+  document.getElementById('instruction').innerText = '';
+}
+
+function clickStart(e) {
+  e.preventDefault();
+  document.getElementsByClassName('modal')[0].classList.remove('show');
+  pause = false;
+  switchModal();
+  setupPause();
+}
+
+function clickUnpause(e) {
+  e.preventDefault();
+  document.getElementsByClassName('modal')[0].classList.remove('show');
+}
+
+function clickRestart(e) {
+  e.preventDefault();
+  arena = new Array(ARENA_HEIGHT).fill().map(() => new Array(ARENA_WIDTH));
+  resetScene();
+  initGame();
+  document.getElementsByClassName('modal')[0].classList.remove('show');
+  gameover = false;
+  setupPause();
 }
 
 // three.js stuff below
@@ -278,7 +308,7 @@ let vector = new THREE.Vector3(0, 0, 0);
 Tetris.init = function () {
   // scene dimension
   const WIDTH = 480;
-  const HEIGHT = 720;
+  const HEIGHT = 800;
 
   // camera attributes
   const VIEW_ANGLE = 90;
@@ -293,7 +323,7 @@ Tetris.init = function () {
   Tetris.scene = new THREE.Scene();
 
   // reposition the camera
-  Tetris.camera.position.z = 450;
+  Tetris.camera.position.z = 480;
   Tetris.scene.add(Tetris.camera);
 
   Tetris.renderer.setSize(WIDTH, HEIGHT);
@@ -308,10 +338,10 @@ Tetris.init();
 // make a bounding box to align the tetrominoes
 let boundingBoxConfig = {
   width: 480,
-  height: 720,
-  depth: 60,
-  splitX: 8,
-  splitY: 12,
+  height: 800,
+  depth: 40,
+  splitX: 12,
+  splitY: 20,
   splitZ: 1
 };
 
@@ -354,14 +384,24 @@ Tetris.addStaticBlock = function (x, y, val) {
       color = 0x1073C4
       break;
     case 11:
+      color = 0x72CB3B
+      break;
     case 12:
     case 13:
+      color = 0xFFD500
+      break;
     case 14:
     case 15:
-    case 16:
-    case 17:
-      color = 0x0341AE
+      color = 0xFF971C
       break;
+    case 16:
+      color = 0xFF3213
+      break;
+    case 17:
+      color = 0x1073C4
+      break;
+      // color = 0x0341AE
+      // break;
     default:
       color = 0x0341AE
       break;
@@ -454,10 +494,13 @@ function gameLoop(time = 0) {
   const frameTime = time - lastTime;
   lastTime = time;
 
-  if (Tetris.camera.position.x < 80) {
-    // Tetris.camera.position.y += 1;
+  if (pause && Tetris.camera.position.x < 100) {
     Tetris.camera.position.x += 1;
+  } else if (!pause && Tetris.camera.position.x > 0) {
+    Tetris.camera.position.x -= 1;
   }
+
+  Tetris.camera.updateProjectionMatrix();
 
   if (forward && Tetris.pointLight.position.x < 500) {
     lightPos++;
@@ -467,7 +510,6 @@ function gameLoop(time = 0) {
     lightPos--;
     Tetris.pointLight.position.x = ((lightPos * lightPos) - 500000) / 500000 * 500;
   } else if (!forward && Tetris.pointLight.position.x <= -500) forward = true;
-  console.log(Tetris.pointLight.position.x)
 
   Tetris.camera.lookAt(vector);
 
@@ -485,10 +527,17 @@ function gameLoop(time = 0) {
   requestAnimationFrame(gameLoop);
 }
 
-piece = generateNewPiece();
-next = generateNewPiece();
-drawNextTetro();
-addPieceToArena(piece);
-convertArenaToBlocks();
-Tetris.renderer.render(Tetris.scene, Tetris.camera);
+arena = new Array(ARENA_HEIGHT).fill().map(() => new Array(ARENA_WIDTH));
+
+function initGame() {
+  piece = generateNewPiece();
+  next = generateNewPiece();
+  drawNextTetro();
+  addPieceToArena(piece);
+  convertArenaToBlocks();
+  Tetris.renderer.render(Tetris.scene, Tetris.camera);
+}
+
+document.getElementById('start').onclick = clickStart;
+initGame();
 gameLoop();

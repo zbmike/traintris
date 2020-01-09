@@ -9,6 +9,16 @@
   </head>
   
   <body>
+    <audio src="./src/assets//Original Tetris theme.mp3" preload="auto"></audio>
+    <div class='modal show'>
+      <div>
+        <h2 id='message'>Welcome</h2>
+        <button id='start'>Start</button>
+        <div class='container'>
+          <p id='instruction'>Or press Q to start</p>
+        </div>
+      </div>
+    </div>
     <main id='main'>
       <div class='status-bar'>
         <div class='title'>
@@ -29,7 +39,7 @@
           <h2 id='level' class='holder'>1</h2>
         </div>
         <div class='container'>
-          <p>Press Q to start</p>
+          <p>Press Q to pause</p>
         </div>
       </div>
     </main>
