@@ -301,6 +301,7 @@ function clickStart(e) {
 function clickUnpause(e) {
   e.preventDefault();
   pause = false;
+  bgm.play();
   document.getElementsByClassName('modal')[0].classList.remove('show');
 }
 
