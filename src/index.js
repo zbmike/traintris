@@ -1,10 +1,11 @@
 import "./styles/index.scss";
 const THREE = require('three');
+const tetrominoes = require('./tetromino');
 
 // Tetris logic
+let gameover = false;
+
 let arena = [
-  [0, 0, 0, 1, 1, 1, 0, 0],
-  [0, 0, 0, 0, 1, 0, 0, 0],
   [0, 0, 0, 0, 0, 0, 0, 0],
   [0, 0, 0, 0, 0, 0, 0, 0],
   [0, 0, 0, 0, 0, 0, 0, 0],
@@ -13,96 +14,173 @@ let arena = [
   [0, 0, 0, 0, 0, 0, 0, 0],
   [0, 0, 0, 0, 0, 0, 0, 0],
   [0, 0, 0, 0, 0, 0, 0, 0],
-  [0, 0, 11, 11, 0, 0, 0, 0],
-  [0, 0, 11, 11, 0, 0, 0, 0]
+  [0, 0, 0, 0, 0, 0, 0, 0],
+  [0, 0, 0, 0, 0, 0, 0, 0],
+  [0, 0, 0, 0, 0, 0, 0, 0],
+  [0, 0, 0, 0, 0, 0, 0, 0]
 ];
 
+let piece;
+
+function clearActiveBlock() {
+  for (let y = 0; y < arena.length; y++) {
+    for (let x = 0; x < arena[0].length; x++) {
+      arena[y][x] = (arena[y][x] > 10) ? arena[y][x] : 0;
+    }
+  }
+}
+
+function predictCollision(piece) {
+  const { tetromino, x, y } = piece;
+  const mid = (tetromino.length <= 2) ? 0 : 1;
+  for (let ly = 0; ly < tetromino.length; ly++) {
+    const actualY = y + ly - mid;
+    if (actualY < 0) continue;
+    for (let lx = 0; lx < tetromino[0].length; lx++) {
+      const actualX = x + lx - mid;
+      if (tetromino[ly][lx]) {
+        if (actualY > 11) return true;
+        if (arena[actualY][actualX] > 10) return true;
+        else if (actualX < 0) return 1;
+        else if (actualX > 7) return -1;
+      }
+    }
+  }
+  return false;
+}
+
+function addPieceToArena(piece) {
+  const { tetromino, x, y } = piece;
+  const mid = (tetromino.length === 2) ? 0 : 1;
+  for (let ly = 0; ly < tetromino.length; ly++) {
+    const actualY = y + ly - mid;
+    if (actualY < 0) continue;
+    for (let lx = 0; lx < tetromino[0].length; lx++) {
+      const actualX = x + lx - mid;
+      if (actualX < 0) continue;
+      if (tetromino[ly][lx]) {
+        arena[actualY][actualX] = tetromino[ly][lx];
+      }
+    }
+  }
+}
+
 function movePieceDown() {
-  let canMove = true;
-  // check collision
-  for (let y = arena.length - 1; y >= 0; y--) {
-    for (let x = 0; x < arena[y].length; x++) {
-      if (arena[y][x] > 0 && arena[y][x] < 10) {
-        if (y + 1 === arena.length || arena[y + 1][x] > 10) {
-          canMove = false;
-          // when block collide with scene, solidify it
-          solidify();
-        }
-      }
-    }
+  let nextPiece = Object.assign({}, piece);
+  nextPiece.y++;
+  if (predictCollision(nextPiece)) {
+    solidify();
+  } else {
+    clearActiveBlock();
+    piece.y++;
+    addPieceToArena(piece);
   }
-  // if no collision, swap the blocks with empty space one space below
-  if (canMove) {
-    for (let y = arena.length - 1; y >= 0; y--) {
-      for (let x = 0; x < arena[y].length; x++) {
-        if (arena[y][x] > 0 && arena[y][x] < 10) {
-          arena[y + 1][x] = arena[y][x];
-          arena[y][x] = 0;
-        }
-      }
-    }
-  }
+
   resetScene();
   Tetris.renderer.render(Tetris.scene, Tetris.camera);
 }
 
 // similar to move down but will not cause solidify
 function movePieceLeft() {
-  canMove = true;
-  for (let y = arena.length - 1; y >= 0; y--) {
-    for (let x = 0; x < arena[y].length; x++) {
-      if (arena[y][x] > 0 && arena[y][x] < 10) {
-        if (x === 0 || arena[y][x - 1] > 10) {
-          canMove = false;
-        }
-      }
-    }
+  let nextPiece = Object.assign({}, piece);
+  nextPiece.x--;
+  if (!predictCollision(nextPiece)) {
+    clearActiveBlock();
+    piece.x--;
+    addPieceToArena(piece);
   }
-  if (canMove) {
-    for (let y = arena.length - 1; y >= 0; y--) {
-      for (let x = 0; x < arena[y].length; x++) {
-        if (arena[y][x] > 0 && arena[y][x] < 10) {
-          arena[y][x - 1] = arena[y][x];
-          arena[y][x] = 0;
-        }
-      }
-    }
-  }
+
   resetScene();
   Tetris.renderer.render(Tetris.scene, Tetris.camera);
 }
 function movePieceRight() {
-  canMove = true;
-  for (let y = arena.length - 1; y >= 0; y--) {
-    for (let x = 0; x < arena[y].length; x++) {
-      if (arena[y][x] > 0 && arena[y][x] < 10) {
-        if (x === 7 || arena[y][x + 1] > 10) {
-          canMove = false;
-        }
-      }
-    }
+  let nextPiece = Object.assign({}, piece);
+  nextPiece.x++;
+  if (!predictCollision(nextPiece)) {
+    clearActiveBlock();
+    piece.x++;
+    addPieceToArena(piece);
   }
-  if (canMove) {
-    for (let y = arena.length - 1; y >= 0; y--) {
-      for (let x = arena[y].length; x >= 0; x--) {
-        if (arena[y][x] > 0 && arena[y][x] < 10) {
-          arena[y][x + 1] = arena[y][x];
-          arena[y][x] = 0;
-        }
+
+  resetScene();
+  Tetris.renderer.render(Tetris.scene, Tetris.camera);
+}
+
+function rotatePiece() {
+  let nextPiece = Object.assign({}, piece);
+  const rotation = (nextPiece.rotation + 1) % 4;
+  nextPiece.rotation = rotation;
+  nextPiece.tetromino = tetrominoes[nextPiece.type][rotation];
+  
+  const result = predictCollision(nextPiece);
+  if (result) {
+    if (result === 1) {
+      nextPiece.x++;
+      if (!predictCollision(nextPiece)) {
+        clearActiveBlock();
+        piece.rotation = rotation;
+        piece.x++;
+        piece.tetromino = tetrominoes[nextPiece.type][rotation];
+        addPieceToArena(piece);
+      }
+    } else if (result === -1) {
+      nextPiece.x--;
+      if (!predictCollision(nextPiece)) {
+        clearActiveBlock();
+        piece.rotation = rotation;
+        piece.x--;
+        piece.tetromino = tetrominoes[nextPiece.type][rotation];
+        addPieceToArena(piece);
       }
     }
+  } else {
+    clearActiveBlock();
+    piece.rotation = rotation;
+    piece.tetromino = tetrominoes[nextPiece.type][rotation];
+    addPieceToArena(piece);
   }
   resetScene();
   Tetris.renderer.render(Tetris.scene, Tetris.camera);
 }
 
 function solidify() {
-  for (let y = arena.length - 1; y >= 0; y--) {
+  for (let y = 0; y < arena.length; y++) {
     for (let x = 0; x < arena[y].length; x++) {
       if (arena[y][x] > 0 && arena[y][x] < 10) {
         arena[y][x] = arena[y][x] + 10;
       }
     }
+  }
+  scoreRow();
+  generateNewPiece();
+  console.log(arena);
+  if (predictCollision(piece)) {
+    gameover = true;
+    alert('Game Over!');
+  }
+}
+
+function scoreRow() {
+  for (let y = 0; y < arena.length; y++) {
+    let fullLine = true;
+    for (let x = 0; x < arena[y].length; x++) {
+      if (arena[y][x] < 10) {
+        fullLine = false;
+      }
+    }
+    if (fullLine) {
+      arena.splice(y, 1);
+      arena.splice(0, 0, new Array(8).fill(0))
+      y--;
+    }
+  }
+}
+
+function generateNewPiece() {
+  const pieces = ['t', 'z', 's', 'o', 'i', 'j', 'l'] 
+  const type = pieces[Math.floor(Math.random()*pieces.length)];
+  piece = {
+    type, rotation: 0, x:3, y:-1, tetromino:tetrominoes[type][0]
   }
 }
 
@@ -114,12 +192,15 @@ document.onkeydown = function (e) {
     movePieceRight();
   } else if (e.keyCode === 83) {
     movePieceDown();
+    timer = 0;
+  } else if (e.keyCode === 32) {
+    rotatePiece();
   }
 }
 
 // three.js stuff below
 let Tetris = {};
-let vector = new THREE.Vector3(0,0,0);
+let vector = new THREE.Vector3(0, 0, 0);
 
 Tetris.init = function () {
   // scene dimension
@@ -135,7 +216,7 @@ Tetris.init = function () {
   // create renderer, camera and a scene
   Tetris.renderer = new THREE.WebGLRenderer({ antialias: true });
   Tetris.camera = new THREE.PerspectiveCamera(VIEW_ANGLE, ASPECT,
-                                              NEAR, FAR);
+    NEAR, FAR);
   Tetris.scene = new THREE.Scene();
   Tetris.scene.background = new THREE.Color(0xffffff);
 
@@ -181,32 +262,34 @@ Tetris.scene.add(boundingBox);
 // function to convert arena blocks to 3d objects
 Tetris.addStaticBlock = function (x, y, val) {
   let color;
-  
-  switch (val) {
-    case 1:
-      color = 0xff00ff
-      break;
-    case 11:
-      color = 0x0000ff
-      break;
-    default:
-      color = 0x0000ff
-      break;
-  }
 
-  const mesh = new THREE.Mesh(new THREE.CubeGeometry(Tetris.blockSize, Tetris.blockSize, Tetris.blockSize), 
-    new THREE.MeshPhongMaterial({ color, wireframe:false }) 
+  // switch (val) {
+  //   case 1:
+  //     color = 0xff00ff
+  //     break;
+  //   case 11:
+  //     color = 0x0000ff
+  //     break;
+  //   default:
+  //     color = 0xff00ff
+  //     break;
+  // }
+  if (val > 0 && val < 10) color = 0xff0000;
+  else if (val > 10) color = 0x0000ff;
+
+  const mesh = new THREE.Mesh(new THREE.CubeGeometry(Tetris.blockSize, Tetris.blockSize, Tetris.blockSize),
+    new THREE.MeshPhongMaterial({ color, wireframe: false })
   );
 
-  mesh.position.x = (x - Tetris.boundingBoxConfig.splitX/2) * Tetris.blockSize + Tetris.blockSize / 2;
+  mesh.position.x = (x - Tetris.boundingBoxConfig.splitX / 2) * Tetris.blockSize + Tetris.blockSize / 2;
   mesh.position.y = (Tetris.boundingBoxConfig.splitY / 2 - y) * Tetris.blockSize - Tetris.blockSize / 2;
-  mesh.position.z = ( -Tetris.boundingBoxConfig.splitZ / 2) * Tetris.blockSize + Tetris.blockSize / 2;
+  mesh.position.z = (-Tetris.boundingBoxConfig.splitZ / 2) * Tetris.blockSize + Tetris.blockSize / 2;
   // mesh.overdraw = true;
 
   Tetris.scene.add(mesh);
 };
 
-function convertArenaToBlocks () {
+function convertArenaToBlocks() {
   for (const [y, row] of arena.entries()) {
     for (const [x, val] of row.entries()) {
       if (val) Tetris.addStaticBlock(x, y, val);
@@ -215,7 +298,7 @@ function convertArenaToBlocks () {
 }
 
 function clearScene() {
-  while (Tetris.scene.children.length > 0)  {
+  while (Tetris.scene.children.length > 0) {
     Tetris.scene.remove(Tetris.scene.children[0]);
   }
 }
@@ -237,24 +320,27 @@ function gameLoop(time = 0) {
   const frameTime = time - lastTime;
   lastTime = time;
 
-  if (Tetris.camera.position.x > -100) {
+  if (Tetris.camera.position.x < 100) {
     // Tetris.camera.position.y += 1;
-    Tetris.camera.position.x += -1;
+    Tetris.camera.position.x += 1;
   }
 
   Tetris.camera.lookAt(vector);
-  
+
   timer += frameTime;
   if (timer > 1000) {
     timer = 0;
     resetScene()
     movePieceDown();
   }
-  
+
   Tetris.renderer.render(Tetris.scene, Tetris.camera);
-  requestAnimationFrame(gameLoop);
+  if (!gameover) requestAnimationFrame(gameLoop);
 }
 
+generateNewPiece();
+piece.y++;
+addPieceToArena(piece);
 convertArenaToBlocks();
 Tetris.renderer.render(Tetris.scene, Tetris.camera);
 gameLoop();
