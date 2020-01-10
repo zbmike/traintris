@@ -5,6 +5,7 @@ const tetrominoes = require('./tetromino');
 // Tetris logic
 const ARENA_WIDTH = 12;
 const ARENA_HEIGHT = 20;
+const BASE_SPEED = 1000;
 
 let arena;
 
@@ -12,8 +13,10 @@ let gameover = false;
 let pause = true;
 let forward = true;
 let mute = false;
+let nextTrain = 100;
 let piece, next, ghost, score = 0, level = 1;
-let speed = 1000; // the smaller the faster
+let speed = BASE_SPEED; // the smaller the faster
+let trainingData = [];
 
 const bgm = document.getElementById('bgm');
 const hardDropSFX = document.getElementById('harddrop');
@@ -72,10 +75,30 @@ function addPieceToArena(piece) {
   }
 }
 
+function makeTrainingEntry() {
+  const arenaState = new Array(ARENA_HEIGHT).fill().map(() => new Array(ARENA_WIDTH).fill(0));
+  for (let y = 0; y < arena.length; y++) {
+    for (let x = 0; x < arena[0].length; x++) {
+      arenaState[y][x] = (arena[y][x] > 10) ? 1 : 0;
+    }
+  }
+  return {
+    input: {
+      arenaState, t:piece.type
+    },
+    output: {
+      r: piece.rotation, x: piece.x, y: piece.y
+    }
+  }
+}
+
 function movePieceDown() {
   let nextPiece = Object.assign({}, piece);
   nextPiece.y++;
   if (predictCollision(nextPiece)) {
+    trainingData.push(makeTrainingEntry());
+    console.log(trainingData);
+    document.getElementById('td').innerText=trainingData.length;
     solidify();
   } else {
     clearActiveBlock();
@@ -165,6 +188,7 @@ function rotatePiece() {
 }
 
 function solidify() {
+  
   for (let y = 0; y < arena.length; y++) {
     for (let x = 0; x < arena[y].length; x++) {
       if (arena[y][x] > 0 && arena[y][x] < 10) {
@@ -225,7 +249,7 @@ function scoreRow() {
     document.getElementById('score').innerText = score;
     level = Math.floor(score/800 + 1);
     document.getElementById('level').innerText = level;
-    speed = 1000 - (level-1)*80;
+    speed = BASE_SPEED*(0.8**(level-1));
   };
 }
 
@@ -284,7 +308,7 @@ document.onkeydown = function (e) {
       rotatePiece();
     } else if (e.keyCode === 87) {
       e.preventDefault();
-      timer = 200;
+      timer = (speed - 500 > 0) ? speed - 500 : 0;
       hardDrop();
     }
   }
@@ -341,7 +365,7 @@ function clickUnpause(e) {
 
 function clickRestart(e) {
   e.preventDefault();
-  arena = new Array(ARENA_HEIGHT).fill().map(() => new Array(ARENA_WIDTH)).fill(0);
+  arena = new Array(ARENA_HEIGHT).fill().map(() => new Array(ARENA_WIDTH).fill(0));
   score = 0, level = 1, speed = 1000;
   resetScene();
   initGame();
