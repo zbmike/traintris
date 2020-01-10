@@ -126,3 +126,17 @@ button {
 button:hover {
   background-color: #333333;
 }
+
+.links {
+  display: flex;
+  width: 36px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.links > a {
+  width: 100%;
+  color: white;
+  margin-bottom: 16px;
+}
