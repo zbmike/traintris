@@ -9,13 +9,14 @@
   </head>
   
   <body>
-    <audio id='bgm' volume='0.5' src="./src/assets/bgm.mp3" autoplay></audio>
+    <audio id='bgm' volume='0.5' src="./src/assets/bgm.mp3" autoplay loop></audio>
     <audio id='harddrop' src="./src/assets/move.mp3" autoplay></audio>
     <audio id='clearrow' src="./src/assets/collision.mp3" autoplay></audio>
     <div class='modal show'>
       <div>
         <h2 id='message'>Welcome</h2>
         <button id='start'>Start</button>
+        <button id='modalmute'>Mute</button>
         <div class='container'>
           <p id='instruction'>Or press Q to start</p>
         </div>
@@ -41,7 +42,11 @@
           <h2 id='level' class='holder'>1</h2>
         </div>
         <div class='container'>
-          <p>Press Q to pause</p>
+          <p>Press <span>Q</span> to pause, <span>A</span> to move left, <span>D</span> to move right, <span>Space</span> to rotate and <span>W</span> to hard drop.</p>
+        </div>
+        <div class='container'>
+          <button id='mute'>Mute</button>
+          <button id='restart'>Restart</button>
         </div>
       </div>
     </main>

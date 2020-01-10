@@ -11,6 +11,7 @@ let arena;
 let gameover = false;
 let pause = true;
 let forward = true;
+let mute = false;
 let piece, next, score = 0, level = 1;
 let speed = 1000; // the smaller the faster
 
@@ -159,12 +160,16 @@ function solidify() {
       }
     }
   }
+  hardDropSFX.pause();
+  hardDropSFX.currentTime = 0;
   scoreRow();
   piece = next;
   next = generateNewPiece();
   drawNextTetro();
   if (predictCollision(piece)) {
     gameover = true;
+    bgm.pause();
+    bgm.currentTime = 0;
     setupRestart();
     document.getElementsByClassName('modal')[0].classList.add('show');
   } else {
@@ -203,7 +208,7 @@ function scoreRow() {
       break;
   }
   if (lines) {
-    scoreRowSFX.play();
+    if (!mute) scoreRowSFX.play();
     document.getElementById('score').innerText = score;
     level = Math.floor(score/800 + 1);
     document.getElementById('level').innerText = level;
@@ -227,7 +232,7 @@ function hardDrop() {
   clearActiveBlock();
   piece.y = nextPiece.y - 1;
   addPieceToArena(piece);
-  hardDropSFX.play();
+  if (!mute) hardDropSFX.play();
   resetScene();
   Tetris.renderer.render(Tetris.scene, Tetris.camera);
 }
@@ -268,7 +273,7 @@ function switchModal() {
     document.getElementsByClassName('modal')[0].classList.add('show');
   }
   else {
-    bgm.play();
+    if (!mute) bgm.play();
     document.getElementsByClassName('modal')[0].classList.remove('show');
   }
 }
@@ -293,7 +298,7 @@ function clickStart(e) {
   e.preventDefault();
   document.getElementsByClassName('modal')[0].classList.remove('show');
   pause = false;
-  bgm.play();
+  if (!mute) bgm.play();
   switchModal();
   setupPause();
 }
@@ -301,7 +306,7 @@ function clickStart(e) {
 function clickUnpause(e) {
   e.preventDefault();
   pause = false;
-  bgm.play();
+  if (!mute) bgm.play();
   document.getElementsByClassName('modal')[0].classList.remove('show');
 }
 
@@ -312,8 +317,27 @@ function clickRestart(e) {
   resetScene();
   initGame();
   document.getElementsByClassName('modal')[0].classList.remove('show');
+  if (!mute) bgm.play();
   gameover = false;
   setupPause();
+}
+
+function clickMute(e) {
+  if (mute) {
+    mute = false;
+    if (!pause) bgm.play();
+    document.getElementById('mute').innerText = 'Mute';
+    document.getElementById('modalmute').innerText = 'Mute';
+  } else {
+    mute = true;
+    bgm.pause();
+    hardDropSFX.pause();
+    hardDropSFX.currentTime = 0;
+    scoreRowSFX.pause();
+    scoreRowSFX.currentTime = 0;
+    document.getElementById('mute').innerText = 'Unmute';
+    document.getElementById('modalmute').innerText = 'Unmute';
+  }
 }
 
 // three.js stuff below
@@ -554,5 +578,8 @@ function initGame() {
 }
 
 document.getElementById('start').onclick = clickStart;
+document.getElementById('restart').onclick = clickRestart;
+document.getElementById('mute').onclick = clickMute;
+document.getElementById('modalmute').onclick = clickMute;
 initGame();
 gameLoop();
