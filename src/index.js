@@ -94,12 +94,12 @@ function makeArenaData() {
 
 function makeTrainingEntry() {
   const arenaState = makeArenaData();
-  arenaState.push(['t', 'z', 's', 'o', 'i', 'j', 'l'].indexOf(piece.type))
+  arenaState.push(['t', 'z', 's', 'o', 'i', 'j', 'l'].indexOf(piece.type)/6);
   return {
     input: 
       arenaState,
     output: 
-      [piece.rotation, piece.x, piece.y]
+      [piece.rotation/3, piece.x/11, piece.y/19]
   }
 }
 let iteration = 0;
@@ -110,7 +110,7 @@ function movePieceDown() {
     trainingData.push(makeTrainingEntry());
     if (canTrain && trainingData.length >= nextTrain) {
       localStorage.setItem('traindata', lzString.compress(JSON.stringify(trainingData)));
-      // nextTrain += 100;
+    // nextTrain += 100;
       canTrain = false;
       console.log('training...', trainingData.length);
       net.trainAsync(trainingData, {
@@ -234,10 +234,12 @@ function solidify() {
   next = generateNewPiece();
   if (trainingFinished) {
     const input = makeArenaData()
-    input.push(['t', 'z', 's', 'o', 'i', 'j', 'l'].indexOf(piece.type));
+    input.push(['t', 'z', 's', 'o', 'i', 'j', 'l'].indexOf(piece.type)/6);
     console.log(input);
     let result = net.run(input);
-    if (result[0]) console.log(result);
+    if (result[0]) {
+      console.log(result[0] * 3, result[1] * 11, result[2] * 19)
+    };
   }
   makeGhost();
   drawNextTetro();
