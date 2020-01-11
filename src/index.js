@@ -324,21 +324,23 @@ function hardDrop() {
 }
 
 function makeGhost() {
-  ghost = Object.assign({}, piece);
-  ghost.tetromino = new Array(piece.tetromino.length).fill()
-                  .map(() => new Array(piece.tetromino.length).fill(0));
-  for (let y = 0; y < piece.tetromino.length; y++) {
-    for (let x = 0; x < piece.tetromino[y].length; x++) {
-      if (piece.tetromino[y][x]) {
-        ghost.tetromino[y][x] = piece.tetromino[y][x] - 10;
-      }
-    }
-  }
+  
   if (pmode) {
       // { type, rotation: 0, x: Math.floor(ARENA_WIDTH / 2 - 1), y: 0, tetromino: tetrominoes[type][0] }
     ghost.rotation = prediction.rotation;
     ghost.x = prediction.x;
     ghost.y = prediction.y;
+
+    ghost.tetromino = new Array(tetrominoes[ghost.type][rotation].length).fill()
+      .map(() => new Array(tetrominoes[ghost.type][rotation].length).fill(0));
+    for (let y = 0; y < tetrominoes[ghost.type][rotation].length; y++) {
+      for (let x = 0; x < tetrominoes[ghost.type][rotation][y].length; x++) {
+        if (tetrominoes[ghost.type][rotation][y][x]) {
+          ghost.tetromino[y][x] = tetrominoes[ghost.type][rotation][y][x] - 10;
+        }
+      }
+    }
+    ghost.tetromino = tetrominoes[ghost.type][rotation];
     while (predictCollision(ghost)) {
       ghost.y--;
       if (ghost.y < 0) {
@@ -349,6 +351,16 @@ function makeGhost() {
     clearGhostBlock();
     if (piece.y !== ghost.y) addPieceToArena(ghost);
   } else {
+    ghost = Object.assign({}, piece);
+    ghost.tetromino = new Array(piece.tetromino.length).fill()
+      .map(() => new Array(piece.tetromino.length).fill(0));
+    for (let y = 0; y < piece.tetromino.length; y++) {
+      for (let x = 0; x < piece.tetromino[y].length; x++) {
+        if (piece.tetromino[y][x]) {
+          ghost.tetromino[y][x] = piece.tetromino[y][x] - 10;
+        }
+      }
+    }
     while (!predictCollision(ghost)) {
       ghost.y++;
     }
