@@ -292,9 +292,11 @@ document.onkeydown = function (e) {
   }
   if (e.keyCode === 81) {
     e.preventDefault();
-    pause = !pause;
-    switchModal();
-    setupPause();
+    if (!gameover) {
+      pause = !pause;
+      switchModal();
+      setupPause();
+    }
   } 
 }
 
