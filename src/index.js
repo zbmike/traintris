@@ -13,10 +13,8 @@ let gameover = false;
 let pause = true;
 let forward = true;
 let mute = false;
-let nextTrain = 100;
 let piece, next, ghost, score = 0, level = 1;
 let speed = BASE_SPEED; // the smaller the faster
-let trainingData = [];
 
 const bgm = document.getElementById('bgm');
 const hardDropSFX = document.getElementById('harddrop');
@@ -75,30 +73,10 @@ function addPieceToArena(piece) {
   }
 }
 
-function makeTrainingEntry() {
-  const arenaState = new Array(ARENA_HEIGHT).fill().map(() => new Array(ARENA_WIDTH).fill(0));
-  for (let y = 0; y < arena.length; y++) {
-    for (let x = 0; x < arena[0].length; x++) {
-      arenaState[y][x] = (arena[y][x] > 10) ? 1 : 0;
-    }
-  }
-  return {
-    input: {
-      arenaState, t:piece.type
-    },
-    output: {
-      r: piece.rotation, x: piece.x, y: piece.y
-    }
-  }
-}
-
 function movePieceDown() {
   let nextPiece = Object.assign({}, piece);
   nextPiece.y++;
   if (predictCollision(nextPiece)) {
-    trainingData.push(makeTrainingEntry());
-    console.log(trainingData);
-    document.getElementById('td').innerText=trainingData.length;
     solidify();
   } else {
     clearActiveBlock();
