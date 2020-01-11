@@ -18,12 +18,15 @@ let gameover = false;
 let pause = true;
 let forward = true;
 let mute = false;
+let enabled = false;
+let pmode = false;
 let piece, next, ghost, score = 0, level = 1;
 let speed = BASE_SPEED;
 let prev = localStorage.getItem('traindata');
 let prevData;
 let nextTrain = 50;
 let trainingData = [];
+let prediction = [];
 
 const bgm = document.getElementById('bgm');
 const hardDropSFX = document.getElementById('harddrop');
@@ -124,6 +127,10 @@ function movePieceDown() {
           })
         .then(res => {
         console.log('training finished', res);
+        if (!enabled) {
+          enabled = true;
+          document.getElementById('pmode').disabled = false;
+        }
         iteration = 0;
         trainingFinished = true;
         canTrain = true;
@@ -238,7 +245,11 @@ function solidify() {
     console.log(input);
     let result = net.run(input);
     if (result[0]) {
-      console.log(result[0] * 3, result[1] * 11, result[2] * 19)
+      const rotation = Math.round(result[0] * 3);
+      const x = Math.round(result[1] * 11);
+      const y = Math.round(result[2] * 19);
+      console.log(rotation, x, y);
+      prediction = {rotation, x, y}
     };
   }
   makeGhost();
@@ -323,12 +334,28 @@ function makeGhost() {
       }
     }
   }
-  while (!predictCollision(ghost)) {
-    ghost.y++;
+  if (pmode) {
+      // { type, rotation: 0, x: Math.floor(ARENA_WIDTH / 2 - 1), y: 0, tetromino: tetrominoes[type][0] }
+    ghost.rotation = prediction.rotation;
+    ghost.x = prediction.x;
+    ghost.y = prediction.y;
+    while (predictCollision(ghost)) {
+      ghost.y--;
+      if (ghost.y < 0) {
+        ghost.y = 0;
+        break;
+      }
+    }
+    clearGhostBlock();
+    if (piece.y !== ghost.y) addPieceToArena(ghost);
+  } else {
+    while (!predictCollision(ghost)) {
+      ghost.y++;
+    }
+    ghost.y--;
+    clearGhostBlock();
+    if (piece.y !== ghost.y) addPieceToArena(ghost);
   }
-  ghost.y--;
-  clearGhostBlock();
-  if (piece.y !== ghost.y) addPieceToArena(ghost);
 }
 
 document.onkeydown = function (e) {
@@ -449,6 +476,17 @@ function clickClear(e) {
   canTrain = true;
   net = new brain.NeuralNetwork();
   document.getElementById('td').innerText = 0;
+}
+
+function clickPMode(e) {
+  e.preventDefault();
+  if (pmode) {
+    pmode = false;
+    document.getElementById('pmode').innerText = 'Predict Mode : OFF';
+  } else {
+    pmode = true;
+    document.getElementById('pmode').innerText = 'Predict Mode : ON';
+  }
 }
 
 // three.js stuff below
@@ -695,6 +733,7 @@ document.getElementById('mute').onclick = clickMute;
 document.getElementById('modalmute').onclick = clickMute;
 document.getElementById('savedata').onclick = clickSave;
 document.getElementById('cleardata').onclick = clickClear;
+document.getElementById('pmode').onclick = clickPMode;
 if (prev) {
   prevData = JSON.parse(lzString.decompress(prev));
   nextTrain = trainingData.length;
