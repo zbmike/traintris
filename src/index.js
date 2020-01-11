@@ -12,6 +12,7 @@ const BASE_SPEED = 1000;
 let net = new brain.NeuralNetwork();
 
 let arena;
+let harddropped = false;
 let trainingFinished = false;
 let canTrain = true;
 let gameover = false;
@@ -22,9 +23,10 @@ let enabled = false;
 let pmode = false;
 let piece, next, ghost, score = 0, level = 1;
 let speed = BASE_SPEED;
+let savedNN = localStorage.getItem('savedNN');
 let prev = localStorage.getItem('traindata');
 let prevData;
-let nextTrain = 50;
+let nextTrain = 100;
 let trainingData = [];
 let prediction = [];
 
@@ -59,8 +61,14 @@ function predictCollision(piece) {
       if (tetromino[ly][lx]) {
         if (actualY >= ARENA_HEIGHT) return true;
         if (arena[actualY][actualX] > 10) return true;
-        else if (actualX < 0) return 1;
-        else if (actualX >= ARENA_WIDTH) return -1;
+        else if (actualX < 0) {
+          // if (tetromino[ly][lx] < 0) return false;
+          return 1;
+        }
+        else if (actualX >= ARENA_WIDTH) {
+          // if (tetromino[ly][lx] < 0) return false;
+          return -1;
+        }
       }
     }
   }
@@ -76,8 +84,8 @@ function addPieceToArena(piece) {
     for (let lx = 0; lx < tetromino[0].length; lx++) {
       const actualX = x + lx - mid;
       if (tetromino[ly][lx]) {
-        if (actualX < 0) throw Error('Block should not be able to go outside');
-        arena[actualY][actualX] = tetromino[ly][lx];
+        if (actualX < 0 && tetromino[ly][lx]>0) throw Error('Block should not be able to go outside');
+        if (actualX >= 0 && actualX < ARENA_WIDTH) arena[actualY][actualX] = tetromino[ly][lx];
       } else {
         if (actualX < 0) continue;
       }
@@ -102,10 +110,9 @@ function makeTrainingEntry() {
     input: 
       arenaState,
     output: 
-      [piece.rotation/3, piece.x/11, piece.y/19]
+      [piece.rotation/3, piece.x/11]
   }
 }
-let iteration = 0;
 function movePieceDown() {
   let nextPiece = Object.assign({}, piece);
   nextPiece.y++;
@@ -113,25 +120,22 @@ function movePieceDown() {
     trainingData.push(makeTrainingEntry());
     if (canTrain && trainingData.length >= nextTrain) {
       localStorage.setItem('traindata', lzString.compress(JSON.stringify(trainingData)));
-    // nextTrain += 100;
+      nextTrain += 100;
       canTrain = false;
       console.log('training...', trainingData.length);
       net.trainAsync(trainingData, {
-            callback: ()=> {
-              iteration+=10;
-              console.log(iteration)
-            }, 
-            callbackPeriod:10,
-            learningRate: 0.3,
-            iterations: 2000
-          })
-        .then(res => {
+        log: true,
+        time: 60000
+      })
+      .then(res => {
         console.log('training finished', res);
+        console.log('next training:', nextTrain);
+        console.log(net.toJSON());
+        localStorage.setItem('savedNN', lzString.compress(JSON.stringify(net.toJSON())));
         if (!enabled) {
           enabled = true;
           document.getElementById('pmode').disabled = false;
         }
-        iteration = 0;
         trainingFinished = true;
         canTrain = true;
       });
@@ -178,54 +182,42 @@ function movePieceRight() {
   Tetris.renderer.render(Tetris.scene, Tetris.camera);
 }
 
+function kickPieceIn(piece){
+  let result = predictCollision(piece);
+  if (result === 1) {
+    while (result === 1) {
+      piece.x++;
+      result = predictCollision(piece);
+    }
+  } else if (result === -1) {
+    while (result === -1) {
+      piece.x--;
+      result = predictCollision(piece);
+    }
+  }
+  return piece;
+}
+
 function rotatePiece() {
   let nextPiece = Object.assign({}, piece);
   const rotation = (nextPiece.rotation + 1) % 4;
   nextPiece.rotation = rotation;
   nextPiece.tetromino = tetrominoes[nextPiece.type][rotation];
   
-  const result = predictCollision(nextPiece);
-  if (result) {
-    if (result === 1) {
-      nextPiece.x++;
-      if (!predictCollision(nextPiece)) {
-        clearActiveBlock();
-        piece.rotation = rotation;
-        piece.x++;
-        piece.tetromino = tetrominoes[nextPiece.type][rotation];
-        addPieceToArena(piece);
-      } else {
-        nextPiece.x++;
-        if (!predictCollision(nextPiece)) {
-          clearActiveBlock();
-          piece.rotation = rotation;
-          piece.x+=2;
-          piece.tetromino = tetrominoes[nextPiece.type][rotation];
-          addPieceToArena(piece);
-        }
-      }
-    } else if (result === -1) {
-      nextPiece.x--;
-      if (!predictCollision(nextPiece)) {
-        clearActiveBlock();
-        piece.rotation = rotation;
-        piece.x--;
-        piece.tetromino = tetrominoes[nextPiece.type][rotation];
-        addPieceToArena(piece);
-      }
-    }
-  } else {
-    clearActiveBlock();
-    piece.rotation = rotation;
-    piece.tetromino = tetrominoes[nextPiece.type][rotation];
-    addPieceToArena(piece);
-  }
+  nextPiece = kickPieceIn(nextPiece);
+  
+  clearActiveBlock();
+  piece.x = nextPiece.x;
+  piece.rotation = rotation;
+  piece.tetromino = nextPiece.tetromino;
+  addPieceToArena(piece);
   makeGhost();
   resetScene();
   Tetris.renderer.render(Tetris.scene, Tetris.camera);
 }
 
 function solidify() {
+  harddropped = false;
   for (let y = 0; y < arena.length; y++) {
     for (let x = 0; x < arena[y].length; x++) {
       if (arena[y][x] > 0 && arena[y][x] < 10) {
@@ -242,14 +234,12 @@ function solidify() {
   if (trainingFinished) {
     const input = makeArenaData()
     input.push(['t', 'z', 's', 'o', 'i', 'j', 'l'].indexOf(piece.type)/6);
-    console.log(input);
     let result = net.run(input);
     if (result[0]) {
       const rotation = Math.round(result[0] * 3);
       const x = Math.round(result[1] * 11);
-      const y = Math.round(result[2] * 19);
-      console.log(rotation, x, y);
-      prediction = {rotation, x, y}
+      console.log('predict rotation and x:', rotation, x);
+      prediction = {rotation, x}
     };
   }
   makeGhost();
@@ -301,7 +291,7 @@ function scoreRow() {
     document.getElementById('score').innerText = score;
     level = Math.floor(score/800 + 1);
     document.getElementById('level').innerText = level;
-    speed = BASE_SPEED*(0.8**(level-1));
+    speed = BASE_SPEED-(80*(level-1));
   };
 }
 
@@ -314,53 +304,60 @@ function generateNewPiece() {
 }
 
 function hardDrop() {
+  if (harddropped) {
+    return movePieceDown();
+  }
+  harddropped = true;
+  let tempPiece = Object.assign({}, piece);
+  while (!predictCollision(tempPiece)) {
+    tempPiece.y++;
+  }
   clearActiveBlock();
   clearGhostBlock();
-  piece.y = ghost.y;
+  piece.y = tempPiece.y-1;
   addPieceToArena(piece);
   if (!mute) hardDropSFX.play();
   resetScene();
   Tetris.renderer.render(Tetris.scene, Tetris.camera);
 }
 
-function makeGhost() {
-  
-  if (pmode) {
-      // { type, rotation: 0, x: Math.floor(ARENA_WIDTH / 2 - 1), y: 0, tetromino: tetrominoes[type][0] }
-    ghost.rotation = prediction.rotation;
-    ghost.x = prediction.x;
-    ghost.y = prediction.y;
+function createGhostTetromino(type, rotation) {
+  const tetro = tetrominoes[type][rotation]
+  let newTetro = new Array(tetro.length).fill()
+    .map(() => new Array(tetro[0].length).fill(0));
 
-    ghost.tetromino = new Array(tetrominoes[ghost.type][rotation].length).fill()
-      .map(() => new Array(tetrominoes[ghost.type][rotation].length).fill(0));
-    for (let y = 0; y < tetrominoes[ghost.type][rotation].length; y++) {
-      for (let x = 0; x < tetrominoes[ghost.type][rotation][y].length; x++) {
-        if (tetrominoes[ghost.type][rotation][y][x]) {
-          ghost.tetromino[y][x] = tetrominoes[ghost.type][rotation][y][x] - 10;
-        }
+  for (let y = 0; y < tetro.length; y++) {
+    for (let x = 0; x < tetro[y].length; x++) {
+      if (tetro[y][x]) {
+        newTetro[y][x] = tetro[y][x] - 10;
       }
     }
-    ghost.tetromino = tetrominoes[ghost.type][rotation];
-    while (predictCollision(ghost)) {
-      ghost.y--;
-      if (ghost.y < 0) {
-        ghost.y = 0;
-        break;
-      }
+  }
+
+  return newTetro;
+}
+
+function makeGhost() {;
+  ghost = Object.assign({}, piece);
+  if (pmode) {
+    const rotation = prediction.rotation;
+    const type = ghost.type;
+    ghost.rotation = rotation;
+    ghost.x = prediction.x;
+    ghost.y = 0;
+
+    ghost.tetromino = createGhostTetromino(type, rotation);
+    ghost = kickPieceIn(ghost);
+    while (!predictCollision(ghost)) {
+      ghost.y++;
     }
+    ghost.y--;
     clearGhostBlock();
-    if (piece.y !== ghost.y) addPieceToArena(ghost);
+    if (piece.y < ghost.y) addPieceToArena(ghost);
   } else {
-    ghost = Object.assign({}, piece);
-    ghost.tetromino = new Array(piece.tetromino.length).fill()
-      .map(() => new Array(piece.tetromino.length).fill(0));
-    for (let y = 0; y < piece.tetromino.length; y++) {
-      for (let x = 0; x < piece.tetromino[y].length; x++) {
-        if (piece.tetromino[y][x]) {
-          ghost.tetromino[y][x] = piece.tetromino[y][x] - 10;
-        }
-      }
-    }
+    const rotation = piece.rotation;
+    const type = ghost.type;
+    ghost.tetromino = createGhostTetromino(type, rotation);
     while (!predictCollision(ghost)) {
       ghost.y++;
     }
@@ -390,13 +387,18 @@ document.onkeydown = function (e) {
       e.preventDefault();
       timer = (speed - 500 > 0) ? speed - 500 : 0;
       hardDrop();
+    } else if (e.keyCode === 69) {
+      e.preventDefault();
+      clickPMode();
     }
   }
   if (e.keyCode === 81) {
     e.preventDefault();
-    pause = !pause;
-    switchModal();
-    setupPause();
+    if (!gameover) {
+      pause = !pause;
+      switchModal();
+      setupPause();
+    }
   } 
 }
 
@@ -446,7 +448,9 @@ function clickUnpause(e) {
 function clickRestart(e) {
   e.preventDefault();
   arena = new Array(ARENA_HEIGHT).fill().map(() => new Array(ARENA_WIDTH).fill(0));
-  score = 0, level = 1, speed = 1000;
+  score = 0, level = 1, speed = BASE_SPEED;
+  document.getElementById('score').innerText = score;
+  document.getElementById('level').innerText = level;
   resetScene();
   initGame();
   document.getElementsByClassName('modal')[0].classList.remove('show');
@@ -483,6 +487,7 @@ function clickSave(e) {
 function clickClear(e) {
   e.preventDefault();
   localStorage.removeItem('traindata');
+  localStorage.removeItem('savedNN');
   trainingData = [];
   trainingFinished = false;
   canTrain = true;
@@ -491,7 +496,7 @@ function clickClear(e) {
 }
 
 function clickPMode(e) {
-  e.preventDefault();
+  if (e) e.preventDefault();
   if (pmode) {
     pmode = false;
     document.getElementById('pmode').innerText = 'Predict Mode : OFF';
@@ -584,24 +589,27 @@ Tetris.addStaticBlock = function (x, y, val) {
       color = 0x1073C4
       break;
     case 11:
-      color = 0x72CB3B
+      color = 0x51A919
+      // color = 0x72CB3B
       break;
     case 12:
     case 13:
-      color = 0xFFD500
+      color = 0xDDB300
+      // color = 0xFFD500
       break;
     case 14:
     case 15:
-      color = 0xFF971C
+      color = 0xDD7500
+      // color = 0xFF971C
       break;
     case 16:
-      color = 0xFF3213
+      color = 0xDD1000
+      // color = 0xFF3213
       break;
     case 17:
-      color = 0x1073C4
+      color = 0x0051A2
+      // color = 0x1073C4
       break;
-      // color = 0x0341AE
-      // break;
     default:
       color = 0x0341AE
       break;
@@ -748,11 +756,15 @@ document.getElementById('cleardata').onclick = clickClear;
 document.getElementById('pmode').onclick = clickPMode;
 if (prev) {
   prevData = JSON.parse(lzString.decompress(prev));
-  nextTrain = trainingData.length;
   trainingData = prevData;
+  if (trainingData.length > 100) nextTrain = trainingData.length;
   console.log(prevData[0]);
   document.getElementById('td').innerText = prevData.length;
 }
+console.log(JSON.parse(lzString.decompress(savedNN)));
+if (savedNN) net.fromJSON(JSON.parse(lzString.decompress(savedNN)));
+
+
 initGame();
 gameLoop();
 
