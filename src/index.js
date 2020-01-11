@@ -344,7 +344,9 @@ function clickUnpause(e) {
 function clickRestart(e) {
   e.preventDefault();
   arena = new Array(ARENA_HEIGHT).fill().map(() => new Array(ARENA_WIDTH).fill(0));
-  score = 0, level = 1, speed = 1000;
+  score = 0, level = 1, speed = BASE_SPEED;
+  document.getElementById('score').innerText = score;
+  document.getElementById('level').innerText = level;
   resetScene();
   initGame();
   document.getElementsByClassName('modal')[0].classList.remove('show');
