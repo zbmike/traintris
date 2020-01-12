@@ -217,15 +217,16 @@ function rotatePiece() {
   nextPiece.tetromino = tetrominoes[nextPiece.type][rotation];
   
   nextPiece = kickPieceIn(nextPiece);
-  
-  clearActiveBlock();
-  piece.x = nextPiece.x;
-  piece.rotation = rotation;
-  piece.tetromino = nextPiece.tetromino;
-  addPieceToArena(piece);
-  makeGhost();
-  resetScene();
-  Tetris.renderer.render(Tetris.scene, Tetris.camera);
+  if (!predictCollision(nextPiece)) {
+    clearActiveBlock();
+    piece.x = nextPiece.x;
+    piece.rotation = rotation;
+    piece.tetromino = nextPiece.tetromino;
+    addPieceToArena(piece);
+    makeGhost();
+    resetScene();
+    Tetris.renderer.render(Tetris.scene, Tetris.camera);
+  }
 }
 
 function makePrediction() {
