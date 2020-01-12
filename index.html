@@ -57,12 +57,6 @@
           <h1>TrainTris</h1>
           <p>By <span>Zhiyuan He</span></p>
         </div>
-        <div class='next-container'>
-          <h2>Next Piece</h2>
-          <div class='next-canvas-container'>
-            <canvas id='nextTetromino'></canvas>
-          </div>
-        </div>
         <div class='container'>
           <h2>Score</h2>
           <h2 id='score' class='holder'>0</h2>
@@ -72,14 +66,46 @@
           <h2 id='level' class='holder'>1</h2>
         </div>
         <div class='container'>
-          <p>Press <span>Q</span> to pause, <span>A</span> to move left, <span>D</span> to move right, <span>Space</span> to rotate and <span>W</span> to hard drop.</p>
+          <h2>Training Entries</h2>
+          <h2 id='td' class='holder'>0</h2>
+        </div>
+        <div class='container'>
+          <p>Press <span>Q</span> to pause, <span>A</span> to move left, <span>D</span> to move right, <span>Space</span> to rotate, <span>W</span> to hard drop and <span>E</span> to put the current tetromino into hold.</p>
         </div>
         <div class='container'>
           <button id='restart'>Restart</button>
           <button id='mute'>Mute</button>
         </div>
+          <button id='savedata'>Save Data</button>
+          <button id='cleardata'>Clear Data</button>
+          <button id='pmode'>Predict Mode : OFF</button>
+          <p><span>Warning!</span> When <span>Predict Mode</span> is <span>On</span>, this game will have extremely high CPU usage when training and will cause the game to lag.</p>
+          <button id='tmode'>Training Mode : OFF</button>
+          <p> If <span>Training Mode</span> is <span>On</span>, auto dropdown is disabled. Take your time to make the best decision! Press <span>W</span> to decide.</p>
+      </div>
+      <div id='canvas-holder'></div>
+      <div class='status-bar'>
+        <div class='next-container'>
+          <h2 class='right'>Hold</h2>
+          <div class='next-canvas-container right'>
+            <canvas id='holdTetromino'></canvas>
+          </div>
+          <h2>Next Piece</h2>
+          <div class='next-container'>
+            <div class='next-canvas-container right'>
+              <canvas id='nextTetromino'></canvas>
+            </div>
+            <div class='next-canvas-container right'>
+              <canvas id='nextTetromino2'></canvas>
+            </div>
+            <div class='next-canvas-container right'>
+              <canvas id='nextTetromino3'></canvas>
+            </div>
+          </div>
+        </div>
       </div>
     </main>
+    
     <script src="./dist/main.js"></script>
   </body>
 </html>
