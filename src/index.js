@@ -458,24 +458,27 @@ Tetris.addStaticBlock = function (x, y, val) {
       color = 0x1073C4
       break;
     case 11:
-      color = 0x72CB3B
+      color = 0x51A919
+      // color = 0x72CB3B
       break;
     case 12:
     case 13:
-      color = 0xFFD500
+      color = 0xDDB300
+      // color = 0xFFD500
       break;
     case 14:
     case 15:
-      color = 0xFF971C
+      color = 0xDD7500
+      // color = 0xFF971C
       break;
     case 16:
-      color = 0xFF3213
+      color = 0xDD1000
+      // color = 0xFF3213
       break;
     case 17:
-      color = 0x1073C4
+      color = 0x0051A2
+      // color = 0x1073C4
       break;
-      // color = 0x0341AE
-      // break;
     default:
       color = 0x0341AE
       break;
@@ -487,7 +490,7 @@ Tetris.addStaticBlock = function (x, y, val) {
 
   let outline = new THREE.LineSegments(
     new THREE.EdgesGeometry(blockGeo),
-    new THREE.LineBasicMaterial({ color: 0x000000, linewidth: 5 })
+    new THREE.LineBasicMaterial({ color: 0x000000, linewidth: 2 })
   );
 
   const mesh = new THREE.Mesh(new THREE.CubeGeometry(Tetris.blockSize, Tetris.blockSize, Tetris.blockSize),
@@ -530,8 +533,7 @@ function drawNextTetro() {
                        j: "#FF971C", l:"#FF971C", i:"#FF3213", o:"#1073C4"};
   canvas.width = width * matrix.length;
   canvas.height = width * matrix.length;
-  ctx.fillStyle = 'black';
-  ctx.fillRect(0, 0, width, width);
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
   matrix.forEach((row, y) => {
     row.forEach((value, x) => {
       if (value) {
