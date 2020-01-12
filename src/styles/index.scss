@@ -62,7 +62,11 @@ body {
 .title > h1 {
   font-family: Verdana, Geneva, Tahoma, sans-serif;;
   font-weight: 700;
-  margin: 0;
+  margin-bottom: 4px;
+}
+
+.title > p {
+  margin-bottom: 24px;
 }
 
 .next-canvas-container {
@@ -131,4 +135,17 @@ button:hover {
 button:disabled {
   color: gray;
   background-color: #333333;
+  
+.links {
+  display: flex;
+  width: 36px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.links > a {
+  width: 100%;
+  color: white;
+  margin-bottom: 16px;
 }

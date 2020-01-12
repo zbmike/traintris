@@ -30,6 +30,7 @@ let nextTrain = 100;
 let trainingData = [];
 let prediction = [];
 
+
 const bgm = document.getElementById('bgm');
 const hardDropSFX = document.getElementById('harddrop');
 const scoreRowSFX = document.getElementById('clearrow');
@@ -113,6 +114,7 @@ function makeTrainingEntry() {
       [piece.rotation/3, piece.x/11]
   }
 }
+
 function movePieceDown() {
   let nextPiece = Object.assign({}, piece);
   nextPiece.y++;
@@ -141,6 +143,7 @@ function movePieceDown() {
       });
     }
     document.getElementById('td').innerText=trainingData.length;
+
     solidify();
   } else {
     clearActiveBlock();
