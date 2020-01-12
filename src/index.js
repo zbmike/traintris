@@ -619,6 +619,7 @@ function clickPredictionMode(e) {
     predictionMode = true;
     document.getElementById('pmode').innerText = 'Predict Mode : ON';
   }
+  if (trainingFinished) makePrediction();
 }
 
 function clickTrainingMode(e) {
