@@ -122,7 +122,7 @@ function makeTrainingEntry() {
     input: 
       arenaState,
     output: 
-      [(piece.rotation + 1) / 4, (piece.x + 1) / 12]
+      [(piece.rotation + 1) / 4, (piece.x + 1) / ARENA_WIDTH]
   }
 }
 
@@ -239,7 +239,7 @@ function makePrediction() {
   input.push((types.indexOf(next3.type) + 1) / 7);
   let result = net.run(input);
   const rotation = Math.floor(result[0] * 4);
-  const x = Math.floor(result[1] * 12);
+  const x = Math.floor(result[1] * ARENA_WIDTH);
   console.log('predict rotation and x:', rotation, x);
   prediction = { rotation, x }
 }
