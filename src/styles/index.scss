@@ -45,10 +45,9 @@ body {
 
 .status-bar {
   width: 200px;
-  height: 750px;
   display: flex;
   flex-direction: column;
-  padding: 24px;
+  padding: 8px 24px;
   margin: 16px;
   margin-top: 40px;
   border-radius: 8px;
@@ -62,6 +61,7 @@ body {
 .title > h1 {
   font-family: Verdana, Geneva, Tahoma, sans-serif;;
   font-weight: 700;
+  margin: 8px;
   margin-bottom: 4px;
 }
 
