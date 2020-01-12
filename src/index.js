@@ -12,7 +12,6 @@ const BASE_SPEED = 1000;
 let net = new brain.NeuralNetwork();
 
 let arena;
-let harddropped = false;
 let trainingFinished = false;
 let canTrain = true;
 let gameover = false;
@@ -25,8 +24,7 @@ let piece, next, ghost, score = 0, level = 1;
 let speed = BASE_SPEED;
 let savedNN = localStorage.getItem('savedNN');
 let prev = localStorage.getItem('traindata');
-let prevData;
-let nextTrain = 100;
+let nextTrain = 50;
 let trainingData = [];
 let prediction = [];
 
@@ -122,7 +120,7 @@ function movePieceDown() {
     trainingData.push(makeTrainingEntry());
     if (canTrain && trainingData.length >= nextTrain) {
       localStorage.setItem('traindata', lzString.compress(JSON.stringify(trainingData)));
-      nextTrain += 100;
+      nextTrain += 50;
       canTrain = false;
       console.log('training...', trainingData.length);
       net.trainAsync(trainingData, {
@@ -220,7 +218,6 @@ function rotatePiece() {
 }
 
 function solidify() {
-  harddropped = false;
   for (let y = 0; y < arena.length; y++) {
     for (let x = 0; x < arena[y].length; x++) {
       if (arena[y][x] > 0 && arena[y][x] < 10) {
@@ -307,10 +304,6 @@ function generateNewPiece() {
 }
 
 function hardDrop() {
-  if (harddropped) {
-    return movePieceDown();
-  }
-  harddropped = true;
   let tempPiece = Object.assign({}, piece);
   while (!predictCollision(tempPiece)) {
     tempPiece.y++;
@@ -515,12 +508,12 @@ let vector = new THREE.Vector3(0, 0, 0);
 
 Tetris.init = function () {
   // scene dimension
-  const WIDTH = 480;
-  const HEIGHT = 800;
+  const ASPECT = ARENA_WIDTH / ARENA_HEIGHT;
+  const HEIGHT = window.innerHeight;
+  const WIDTH = HEIGHT * ASPECT;
 
   // camera attributes
   const VIEW_ANGLE = 90;
-  const ASPECT = WIDTH / HEIGHT;
   const NEAR = 0.1;
   const FAR = 10000;
 
@@ -667,8 +660,7 @@ function drawNextTetro() {
                        j: "#FF971C", l:"#FF971C", i:"#FF3213", o:"#1073C4"};
   canvas.width = width * matrix.length;
   canvas.height = width * matrix.length;
-  ctx.fillStyle = 'black';
-  ctx.fillRect(0, 0, width, width);
+  ctx.clearRect(0, 0, canvas.width, canvas.width);
   matrix.forEach((row, y) => {
     row.forEach((value, x) => {
       if (value) {
@@ -758,15 +750,12 @@ document.getElementById('savedata').onclick = clickSave;
 document.getElementById('cleardata').onclick = clickClear;
 document.getElementById('pmode').onclick = clickPMode;
 if (prev) {
-  prevData = JSON.parse(lzString.decompress(prev));
-  trainingData = prevData;
-  if (trainingData.length > 100) nextTrain = trainingData.length;
-  console.log(prevData[0]);
-  document.getElementById('td').innerText = prevData.length;
+  trainingData = JSON.parse(lzString.decompress(prev));
+  if (trainingData.length > 50) nextTrain = trainingData.length;
+  console.log(trainingData[0]);
+  document.getElementById('td').innerText = trainingData.length;
 }
-console.log(JSON.parse(lzString.decompress(savedNN)));
 if (savedNN) net.fromJSON(JSON.parse(lzString.decompress(savedNN)));
-
 
 initGame();
 gameLoop();
