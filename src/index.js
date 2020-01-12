@@ -238,9 +238,9 @@ function makePrediction() {
   input.push((types.indexOf(next2.type) + 1) / 7);
   input.push((types.indexOf(next3.type) + 1) / 7);
   let result = net.run(input);
-  const rotation = Math.round(result[0] * 4 - 1);
-  const x = Math.round(result[1] * 12 - 1);
-  // console.log('predict rotation and x:', rotation, x);
+  const rotation = Math.floor(result[0] * 4);
+  const x = Math.floor(result[1] * 12);
+  console.log('predict rotation and x:', rotation, x);
   prediction = { rotation, x }
 }
 
