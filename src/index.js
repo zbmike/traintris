@@ -58,8 +58,11 @@ function predictCollision(piece) {
     for (let lx = 0; lx < tetromino[0].length; lx++) {
       const actualX = x + lx - mid;
       if (tetromino[ly][lx]) {
-        if (actualY < 0 && (actualX >= ARENA_WIDTH || actualX < 0)) return true;
-        if (actualY < 0) continue;
+        if (actualY < 0) {
+          if (actualX >= ARENA_WIDTH) return -1;
+          if (actualX < 0) return 1;
+          continue;
+        }
         if (actualY >= ARENA_HEIGHT) return true;
         if (arena[actualY][actualX] > 10) return true;
         else if (actualX < 0) {
