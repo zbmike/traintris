@@ -5,7 +5,7 @@ const brain = require('brain.js');
 const lzString = require('./lib/lz-string.min.js')
 
 // Tetris logic
-const ARENA_WIDTH = 12;
+const ARENA_WIDTH = 10;
 const ARENA_HEIGHT = 20;
 const BASE_SPEED = 1000;
 
@@ -19,15 +19,15 @@ let pause = true;
 let forward = true;
 let mute = false;
 let enabled = false;
-let pmode = false;
-let piece, next, ghost, score = 0, level = 1;
-let speed = BASE_SPEED;
+let predictionMode = false;
+let trainingMode = false;
+let piece, next, next2, next3, hold, ghost, score = 0, level = 1;
+let millisecondPerDrop = BASE_SPEED;
 let savedNN = localStorage.getItem('savedNN');
 let prev = localStorage.getItem('traindata');
 let nextTrain = 50;
 let trainingData = [];
-let prediction = [];
-
+let prediction;
 
 const bgm = document.getElementById('bgm');
 const hardDropSFX = document.getElementById('harddrop');
@@ -54,10 +54,12 @@ function predictCollision(piece) {
   const mid = (tetromino.length <= 2) ? 0 : 1;
   for (let ly = 0; ly < tetromino.length; ly++) {
     const actualY = y + ly - mid;
-    if (actualY < 0) continue;
+    // if (actualY < 0) continue;
     for (let lx = 0; lx < tetromino[0].length; lx++) {
       const actualX = x + lx - mid;
       if (tetromino[ly][lx]) {
+        if (actualY < 0 && (actualX >= ARENA_WIDTH || actualX < 0)) return true;
+        if (actualY < 0) continue;
         if (actualY >= ARENA_HEIGHT) return true;
         if (arena[actualY][actualX] > 10) return true;
         else if (actualX < 0) {
@@ -75,6 +77,10 @@ function predictCollision(piece) {
 }
 
 function addPieceToArena(piece) {
+  addPieceTo(arena, piece);
+}
+
+function addPieceTo(arena, piece) {
   const { tetromino, x, y } = piece;
   const mid = (tetromino.length === 2) ? 0 : 1;
   for (let ly = 0; ly < tetromino.length; ly++) {
@@ -83,13 +89,16 @@ function addPieceToArena(piece) {
     for (let lx = 0; lx < tetromino[0].length; lx++) {
       const actualX = x + lx - mid;
       if (tetromino[ly][lx]) {
-        if (actualX < 0 && tetromino[ly][lx]>0) throw Error('Block should not be able to go outside');
+        if (actualX < 0 && tetromino[ly][lx]>0) {
+          // throw Error('Block should not be able to go outside');
+        }
         if (actualX >= 0 && actualX < ARENA_WIDTH) arena[actualY][actualX] = tetromino[ly][lx];
       } else {
         if (actualX < 0) continue;
       }
     }
   }
+  return arena;
 }
 
 function makeArenaData() {
@@ -104,7 +113,11 @@ function makeArenaData() {
 
 function makeTrainingEntry() {
   const arenaState = makeArenaData();
-  arenaState.push(['t', 'z', 's', 'o', 'i', 'j', 'l'].indexOf(piece.type)/6);
+  const types = ['t', 'z', 's', 'o', 'i', 'j', 'l'];
+  arenaState.push(types.indexOf(piece.type)/6);
+  arenaState.push(types.indexOf(next.type)/6);
+  arenaState.push(types.indexOf(next2.type)/6);
+  arenaState.push(types.indexOf(next3.type)/6);
   return {
     input: 
       arenaState,
@@ -113,35 +126,33 @@ function makeTrainingEntry() {
   }
 }
 
+function trainNet() {
+  trainingData.push(makeTrainingEntry());
+  document.getElementById('td').innerText = trainingData.length;
+  if (predictionMode && canTrain && trainingData.length >= nextTrain) {
+    localStorage.setItem('traindata', lzString.compress(JSON.stringify(trainingData)));
+    nextTrain = trainingData.length + 50;
+    canTrain = false;
+    console.log('training...', trainingData.length);
+    net.trainAsync(trainingData, {
+      log: true,
+      time: 60000
+    })
+      .then(res => {
+        console.log('training finished', res);
+        console.log('next training:', nextTrain);
+        localStorage.setItem('savedNN', lzString.compress(JSON.stringify(net.toJSON())));
+        trainingFinished = true;
+        canTrain = true;
+      });
+  }
+}
+
 function movePieceDown() {
   let nextPiece = Object.assign({}, piece);
   nextPiece.y++;
   if (predictCollision(nextPiece)) {
-    trainingData.push(makeTrainingEntry());
-    if (canTrain && trainingData.length >= nextTrain) {
-      localStorage.setItem('traindata', lzString.compress(JSON.stringify(trainingData)));
-      nextTrain += 50;
-      canTrain = false;
-      console.log('training...', trainingData.length);
-      net.trainAsync(trainingData, {
-        log: true,
-        time: 60000
-      })
-      .then(res => {
-        console.log('training finished', res);
-        console.log('next training:', nextTrain);
-        console.log(net.toJSON());
-        localStorage.setItem('savedNN', lzString.compress(JSON.stringify(net.toJSON())));
-        if (!enabled) {
-          enabled = true;
-          document.getElementById('pmode').disabled = false;
-        }
-        trainingFinished = true;
-        canTrain = true;
-      });
-    }
-    document.getElementById('td').innerText=trainingData.length;
-
+    trainNet();
     solidify();
   } else {
     clearActiveBlock();
@@ -217,6 +228,19 @@ function rotatePiece() {
   Tetris.renderer.render(Tetris.scene, Tetris.camera);
 }
 
+function makePrediction() {
+  const input = makeArenaData()
+  input.push(['t', 'z', 's', 'o', 'i', 'j', 'l'].indexOf(piece.type) / 6);
+  input.push(['t', 'z', 's', 'o', 'i', 'j', 'l'].indexOf(next.type) / 6);
+  input.push(['t', 'z', 's', 'o', 'i', 'j', 'l'].indexOf(next2.type) / 6);
+  input.push(['t', 'z', 's', 'o', 'i', 'j', 'l'].indexOf(next3.type) / 6);
+  let result = net.run(input);
+  const rotation = Math.round(result[0] * 3);
+  const x = Math.round(result[1] * 11);
+  // console.log('predict rotation and x:', rotation, x);
+  prediction = { rotation, x }
+}
+
 function solidify() {
   for (let y = 0; y < arena.length; y++) {
     for (let x = 0; x < arena[y].length; x++) {
@@ -226,22 +250,12 @@ function solidify() {
     }
   }
 
-  hardDropSFX.pause();
-  hardDropSFX.currentTime = 0;
   scoreRow();
   piece = next;
-  next = generateNewPiece();
-  if (trainingFinished) {
-    const input = makeArenaData()
-    input.push(['t', 'z', 's', 'o', 'i', 'j', 'l'].indexOf(piece.type)/6);
-    let result = net.run(input);
-    if (result[0]) {
-      const rotation = Math.round(result[0] * 3);
-      const x = Math.round(result[1] * 11);
-      console.log('predict rotation and x:', rotation, x);
-      prediction = {rotation, x}
-    };
-  }
+  next = next2;
+  next2 = next3;
+  next3 = generateNewPiece();
+  if (trainingFinished) makePrediction();
   makeGhost();
   drawNextTetro();
   if (predictCollision(piece)) {
@@ -256,7 +270,7 @@ function solidify() {
   }
 }
 
-function scoreRow() {
+function clearAndCountRow(arena) {
   let lines = 0;
   for (let y = 0; y < arena.length; y++) {
     let fullLine = true;
@@ -272,6 +286,11 @@ function scoreRow() {
       lines++;
     }
   }
+  return lines;
+}
+
+function scoreRow() {
+  let lines = clearAndCountRow(arena);
   switch (lines) {
     case 1:
       score += 40;
@@ -291,7 +310,7 @@ function scoreRow() {
     document.getElementById('score').innerText = score;
     level = Math.floor(score/800 + 1);
     document.getElementById('level').innerText = level;
-    speed = BASE_SPEED-(80*(level-1));
+    millisecondPerDrop = BASE_SPEED-(80*(level-1));
   };
 }
 
@@ -299,7 +318,11 @@ function generateNewPiece() {
   const pieces = ['t', 'z', 's', 'o', 'i', 'j', 'l'] 
   const type = pieces[Math.floor(Math.random()*pieces.length)];
   return {
-    type, rotation: 0, x:Math.floor(ARENA_WIDTH/2-1), y:0, tetromino:tetrominoes[type][0]
+    type, 
+    rotation: 0, 
+    x:Math.floor(ARENA_WIDTH/2-1), 
+    y:0, 
+    tetromino:tetrominoes[type][0]
   }
 }
 
@@ -335,7 +358,7 @@ function createGhostTetromino(type, rotation) {
 
 function makeGhost() {;
   ghost = Object.assign({}, piece);
-  if (pmode) {
+  if (predictionMode && trainingFinished && !trainingMode) {
     const rotation = prediction.rotation;
     const type = ghost.type;
     ghost.rotation = rotation;
@@ -348,6 +371,11 @@ function makeGhost() {;
       ghost.y++;
     }
     ghost.y--;
+
+    // ghost = findBestPosition();
+    // const { type, rotation } = ghost;
+    // ghost.tetromino = createGhostTetromino(type, rotation);
+
     clearGhostBlock();
     if (piece.y < ghost.y) addPieceToArena(ghost);
   } else {
@@ -362,6 +390,86 @@ function makeGhost() {;
     if (piece.y !== ghost.y) addPieceToArena(ghost);
   }
 }
+
+// function findBestPosition() {
+//   const { type } = piece;
+//   let leastEmpty = Infinity, bestlines = 0;
+//   let bestX, bestY, bestRotate, bingoX, bingoY, bingoRotate, bingoZeroCount;
+//   for (let rot = 0; rot < 4; rot ++) {
+//     let tempPiece = Object.assign({}, piece);
+//     tempPiece.rotation = rot;
+//     tempPiece.tetromino = tetrominoes[type][rot];
+//     const tetroLength = tempPiece.tetromino.length;
+//     let begin, range=0, threshold = 0;
+//     for (let lx = 0; lx < tetroLength; lx ++) {
+//       let counted = false;
+//       for (let ly = 0; ly < tetroLength; ly ++) {
+//         if (tempPiece.tetromino[ly][lx]) {
+//           if (begin === undefined) begin = lx;
+//           if (!counted) {
+//             range++;
+//             counted = true;
+//           }
+//         } else threshold++;
+//       }
+//       if (counted) threshold -= tetroLength;
+//     }
+
+//     for (let tx = 0; tx < ARENA_WIDTH; tx++) {
+//       tempPiece.x = tx;
+//       tempPiece = kickPieceIn(tempPiece);
+//       if (tempPiece.x != tx) continue;
+//       let tempArena = new Array(ARENA_HEIGHT).fill()
+//         .map(()=> new Array(ARENA_WIDTH).fill(0));
+//       for (let y = 0; y < arena.length; y++) {
+//         for (let x = 0; x < arena[0].length; x++) {
+//           tempArena[y][x] = (arena[y][x] > 10) ? arena[y][x] : 0;
+//         }
+//       }
+//       while (!predictCollision(tempPiece)) tempPiece.y++;
+//       tempPiece.y--;
+//       tempArena = addPieceTo(tempArena, tempPiece);
+//       let zeroCount = -threshold;
+//       for (let cy = ARENA_HEIGHT - 1; cy >= tempPiece.y - 1; cy--) {
+//         const mid = (tempPiece.tetromino.length === 2) ? 0 : 1;
+//         for (let cx = tempPiece.x + begin - mid;
+//           cx < tempPiece.x - mid + range; cx++) {
+//           if ((cx > 0 && cx < ARENA_WIDTH) 
+//             && (cy > 0 && cy < ARENA_HEIGHT) 
+//             && tempArena[cy][cx] === 0) {
+//             zeroCount++;
+//           }
+//         }
+//       }
+//       let lines = clearAndCountRow(tempArena);
+//       if (lines > bestlines) {
+//         bestlines = lines;
+//         bingoX = tempPiece.x;
+//         bingoY = tempPiece.y;
+//         bingoRotate = tempPiece.rotation;
+//         bingoZeroCount = zeroCount;
+//       }
+//       if (zeroCount < leastEmpty) {
+//         leastEmpty = zeroCount;
+//         bestX = tempPiece.x;
+//         bestY = tempPiece.y;
+//         bestRotate = tempPiece.rotation;
+//       }
+//     }
+//   }
+//   if (bingoZeroCount <= leastEmpty) {
+//     bestX = bingoX ;
+//     bestY = bingoY;
+//     bestRotate = bingoRotate;
+//   }
+//   return {
+//     type,
+//     rotation: bestRotate,
+//     x: bestX,
+//     y: bestY,
+//     tetromino: tetrominoes[type][bestRotate]
+//   }
+// }
 
 document.onkeydown = function (e) {
   // console.log(e.keyCode)
@@ -381,11 +489,18 @@ document.onkeydown = function (e) {
       rotatePiece();
     } else if (e.keyCode === 87) {
       e.preventDefault();
-      timer = (speed - 500 > 0) ? speed - 500 : 0;
+      timer = (millisecondPerDrop - 500 > 0) ? millisecondPerDrop - 500 : 0;
       hardDrop();
+      if (trainingMode) {
+        trainNet();
+        solidify();
+        resetScene();
+        Tetris.renderer.render(Tetris.scene, Tetris.camera);
+      }
     } else if (e.keyCode === 69) {
       e.preventDefault();
-      clickPMode();
+      if (hold) releasePiece();
+      else holdPiece();
     }
   }
   if (e.keyCode === 81) {
@@ -444,9 +559,10 @@ function clickUnpause(e) {
 function clickRestart(e) {
   e.preventDefault();
   arena = new Array(ARENA_HEIGHT).fill().map(() => new Array(ARENA_WIDTH).fill(0));
-  score = 0, level = 1, speed = BASE_SPEED;
+  score = 0, level = 1, millisecondPerDrop = BASE_SPEED;
   document.getElementById('score').innerText = score;
   document.getElementById('level').innerText = level;
+  hold = null;
   resetScene();
   initGame();
   document.getElementsByClassName('modal')[0].classList.remove('show');
@@ -491,15 +607,60 @@ function clickClear(e) {
   document.getElementById('td').innerText = 0;
 }
 
-function clickPMode(e) {
+function clickPredictionMode(e) {
   if (e) e.preventDefault();
-  if (pmode) {
-    pmode = false;
+  if (predictionMode) {
+    predictionMode = false;
     document.getElementById('pmode').innerText = 'Predict Mode : OFF';
   } else {
-    pmode = true;
+    predictionMode = true;
     document.getElementById('pmode').innerText = 'Predict Mode : ON';
   }
+}
+
+function clickTrainingMode(e) {
+  if (e) e.preventDefault();
+  if (trainingMode) {
+    trainingMode = false;
+    document.getElementById('tmode').innerText = 'Training Mode : OFF';
+  } else {
+    trainingMode = true;
+    document.getElementById('tmode').innerText = 'Training Mode : ON';
+  }
+}
+
+function holdPiece() {
+  hold = piece;
+  piece = next;
+  next = next2;
+  next2 = next3;
+  next3 = generateNewPiece();
+  clearActiveBlock();
+  if (trainingFinished) makePrediction();
+  makeGhost();
+  drawNextTetro();
+  addPieceToArena(piece);
+  timer = 0;
+  resetScene();
+  Tetris.renderer.render(Tetris.scene, Tetris.camera);
+}
+
+function releasePiece() {
+  const {y} = piece;
+  let temp = piece;
+  piece = hold;
+  hold = temp;
+  hold.y = piece.y = y;
+  while (predictCollision(piece)) {
+    piece.y--;
+  }
+  clearActiveBlock();
+  if (trainingFinished) makePrediction();
+  makeGhost();
+  drawNextTetro();
+  addPieceToArena(piece);
+  resetScene();
+  Tetris.renderer.render(Tetris.scene, Tetris.camera);
 }
 
 // three.js stuff below
@@ -509,7 +670,7 @@ let vector = new THREE.Vector3(0, 0, 0);
 Tetris.init = function () {
   // scene dimension
   const ASPECT = ARENA_WIDTH / ARENA_HEIGHT;
-  const HEIGHT = window.innerHeight;
+  const HEIGHT = window.innerHeight - 40;
   const WIDTH = HEIGHT * ASPECT;
 
   // camera attributes
@@ -530,7 +691,7 @@ Tetris.init = function () {
   Tetris.renderer.setSize(WIDTH, HEIGHT);
 
   // attach the render-supplied DOM element
-  document.getElementById('main')
+  document.getElementById('canvas-holder')
   .appendChild(Tetris.renderer.domElement);
 }
 
@@ -538,11 +699,11 @@ Tetris.init();
 
 // make a bounding box to align the tetrominoes
 let boundingBoxConfig = {
-  width: 480,
-  height: 800,
+  width: ARENA_WIDTH*40,
+  height: ARENA_HEIGHT*40,
   depth: 40,
-  splitX: 12,
-  splitY: 20,
+  splitX: ARENA_WIDTH,
+  splitY: ARENA_HEIGHT,
   splitZ: 1
 };
 
@@ -651,11 +812,18 @@ function clearScene() {
   }
 }
 
-function drawNextTetro() {
-  const canvas = document.getElementById('nextTetromino');
+function drawNextTetro(){
+  drawTetroOnCanvas('nextTetromino', next);
+  drawTetroOnCanvas('nextTetromino2', next2);
+  drawTetroOnCanvas('nextTetromino3', next3);
+  if (hold) drawTetroOnCanvas('holdTetromino', hold);
+}
+
+function drawTetroOnCanvas(elementId, drawPiece) {
+  const canvas = document.getElementById(elementId);
   const width = 32;
   const ctx = canvas.getContext('2d');
-  const matrix = next.tetromino;
+  const matrix = drawPiece.tetromino;
   const colorScheme = {t: "#72CB3B", z:"#FFD500", s:"#FFD500", 
                        j: "#FF971C", l:"#FF971C", i:"#FF3213", o:"#1073C4"};
   canvas.width = width * matrix.length;
@@ -669,7 +837,7 @@ function drawNextTetro() {
         ctx.strokeRect(x * width,
           y * width,
           width, width);
-        ctx.fillStyle = colorScheme[next.type];
+        ctx.fillStyle = colorScheme[drawPiece.type];
         ctx.fillRect(x*width,
           y*width,
           width, width);
@@ -716,9 +884,9 @@ function gameLoop(time = 0) {
 
   Tetris.camera.lookAt(vector);
 
-  if (!gameover && !pause) {
+  if (!gameover && !pause && !trainingMode) {
     timer += frameTime;
-    if (timer > speed) {
+    if (timer > millisecondPerDrop) {
       timer = 0;
       resetScene();
       movePieceDown();
@@ -735,6 +903,8 @@ arena = new Array(ARENA_HEIGHT).fill().map(() => new Array(ARENA_WIDTH).fill(0))
 function initGame() {
   piece = generateNewPiece();
   next = generateNewPiece();
+  next2 = generateNewPiece();
+  next3 = generateNewPiece();
   drawNextTetro();
   makeGhost();
   addPieceToArena(piece);
@@ -748,16 +918,23 @@ document.getElementById('mute').onclick = clickMute;
 document.getElementById('modalmute').onclick = clickMute;
 document.getElementById('savedata').onclick = clickSave;
 document.getElementById('cleardata').onclick = clickClear;
-document.getElementById('pmode').onclick = clickPMode;
-if (prev) {
-  trainingData = JSON.parse(lzString.decompress(prev));
-  if (trainingData.length > 50) nextTrain = trainingData.length;
-  console.log(trainingData[0]);
-  document.getElementById('td').innerText = trainingData.length;
-}
-if (savedNN) net.fromJSON(JSON.parse(lzString.decompress(savedNN)));
+document.getElementById('pmode').onclick = clickPredictionMode;
+document.getElementById('tmode').onclick = clickTrainingMode;
 
 initGame();
+
+if (prev) {
+  trainingData = JSON.parse(lzString.decompress(prev));
+  console.log(trainingData[0]);
+  if (trainingData.length > 50) nextTrain = trainingData.length + 50;
+  document.getElementById('td').innerText = trainingData.length;
+}
+if (savedNN) {
+  net.fromJSON(JSON.parse(lzString.decompress(savedNN)));
+  trainingFinished = true;
+  makePrediction();
+}
+
 gameLoop();
 
 window.net = net;
