@@ -114,15 +114,15 @@ function makeArenaData() {
 function makeTrainingEntry() {
   const arenaState = makeArenaData();
   const types = ['t', 'z', 's', 'o', 'i', 'j', 'l'];
-  arenaState.push(types.indexOf(piece.type)/6);
-  arenaState.push(types.indexOf(next.type)/6);
-  arenaState.push(types.indexOf(next2.type)/6);
-  arenaState.push(types.indexOf(next3.type)/6);
+  arenaState.push((types.indexOf(piece.type) + 1) / 7);
+  arenaState.push((types.indexOf(next.type) + 1) / 7);
+  arenaState.push((types.indexOf(next2.type) + 1) / 7);
+  arenaState.push((types.indexOf(next3.type) + 1) / 7);
   return {
     input: 
       arenaState,
     output: 
-      [piece.rotation/3, piece.x/11]
+      [(piece.rotation + 1) / 4, (piece.x + 1) / 12]
   }
 }
 
@@ -144,6 +144,7 @@ function trainNet() {
         localStorage.setItem('savedNN', lzString.compress(JSON.stringify(net.toJSON())));
         trainingFinished = true;
         canTrain = true;
+        makePrediction();
       });
   }
 }
@@ -231,13 +232,14 @@ function rotatePiece() {
 
 function makePrediction() {
   const input = makeArenaData()
-  input.push(['t', 'z', 's', 'o', 'i', 'j', 'l'].indexOf(piece.type) / 6);
-  input.push(['t', 'z', 's', 'o', 'i', 'j', 'l'].indexOf(next.type) / 6);
-  input.push(['t', 'z', 's', 'o', 'i', 'j', 'l'].indexOf(next2.type) / 6);
-  input.push(['t', 'z', 's', 'o', 'i', 'j', 'l'].indexOf(next3.type) / 6);
+  const types = ['t', 'z', 's', 'o', 'i', 'j', 'l'];
+  input.push((types.indexOf(piece.type) + 1) / 7);
+  input.push((types.indexOf(next.type) + 1) / 7);
+  input.push((types.indexOf(next2.type) + 1) / 7);
+  input.push((types.indexOf(next3.type) + 1) / 7);
   let result = net.run(input);
-  const rotation = Math.round(result[0] * 3);
-  const x = Math.round(result[1] * 11);
+  const rotation = Math.round(result[0] * 4 - 1);
+  const x = Math.round(result[1] * 12 - 1);
   // console.log('predict rotation and x:', rotation, x);
   prediction = { rotation, x }
 }
